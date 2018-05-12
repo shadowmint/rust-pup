@@ -1,0 +1,4 @@
+action: pup-node
+versions:
+  -
+    version: 1.0.0    

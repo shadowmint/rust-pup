@@ -1,0 +1,6 @@
+[package]
+name = "pup-main"
+version = "0.1.0"
+authors = ["Douglas Linder <linderd@iinet.net.au>"]
+
+[dependencies]
