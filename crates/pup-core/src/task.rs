@@ -1,6 +1,6 @@
 use ::context::PupContext;
 use ::manifest::PupManifest;
-use ::errors::{PupError, PupErrorType};
+use ::errors::{PupError};
 use ::utils::path::join;
 use std::path::Path;
 use std::path::PathBuf;
@@ -46,7 +46,7 @@ impl PupTask {
 mod tests {
     use super::PupTask;
     use ::context::PupContext;
-    use ::fixtures::test_context_fixture;
+    use ::testing::test_context_fixture;
     use std::env::current_dir;
     use std::path::PathBuf;
     use std::path::Path;

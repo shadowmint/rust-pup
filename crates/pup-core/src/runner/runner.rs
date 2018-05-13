@@ -65,12 +65,12 @@ fn debug_print(f: &mut fmt::Formatter, action: &PupAction, offset: usize) {
     let ext = action.external.as_ref().unwrap();
 
     // Name
-    write!(f, " ");
-    write!(f, "{}", "-".repeat(offset));
-    write!(f, " {} #{}", ext.task.name, ext.version.version);
+    let _ = write!(f, " ");
+    let _ = write!(f, "{}", "-".repeat(offset));
+    let _ = write!(f, " {} #{}", ext.task.name, ext.version.version);
 
     // Action
-    write!(f, " ({} -> {})\n", ext.worker.name, ext.version.path.to_str().unwrap());
+    let _ = write!(f, " ({} -> {})\n", ext.worker.name, ext.version.path.to_str().unwrap());
 
     for child in action.children.iter() {
         debug_print(f, child, offset + 1);
@@ -84,7 +84,7 @@ mod tests {
     use std::env::current_dir;
     use utils::path::join;
     use std::path::PathBuf;
-    use ::fixtures::test_context_fixture;
+    use ::testing::test_context_fixture;
     use runner::action::PupActionOptions;
 
     #[test]

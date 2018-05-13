@@ -7,7 +7,7 @@ use std::path::Path;
 use std::fs::File;
 use std::io::Read;
 use std::path::PathBuf;
-use std::fs;
+use std::error::Error;
 use utils::path::exists;
 
 
@@ -39,15 +39,24 @@ pub struct PupManifestVersion {
 }
 
 impl PupManifest {
-    pub fn try_from(value: &Path) -> Result<Self, PupError> {
-        let manifest_path = join(value, "manifest.yml");
+    pub fn try_from(task_folder: &Path) -> Result<Self, PupError> {
+        let manifest_path = join(task_folder, "manifest.yml");
+        return PupManifest::read_manifest(task_folder, &manifest_path).map_err(|err| {
+            return PupError::with_error(
+                PupErrorType::MissingManifest,
+                &format!("Unable to read manifest: {:?}: {:?}", manifest_path, err.description()),
+                err,
+            );
+        });
+    }
 
+    fn read_manifest(task_path: &Path, manifest_path: &Path) -> Result<Self, PupError> {
         let mut fp = File::open(&manifest_path)?;
         let mut raw = String::new();
         fp.read_to_string(&mut raw)?;
 
         let mut manifest: PupManifest = serde_yaml::from_str(&raw)?;
-        manifest.validate(&value)?;
+        manifest.validate(&task_path)?;
 
         return Ok(manifest);
     }
@@ -59,7 +68,7 @@ impl PupManifest {
             if !exists(&version_path) {
                 return Err(PupError::with_message(
                     PupErrorType::MissingVersionFolder,
-                    &format!("Missing version directory: {:?}", &version_path)
+                    &format!("Missing version directory: {:?}", &version_path),
                 ));
             }
             version.path = PathBuf::from(path);

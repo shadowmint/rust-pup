@@ -5,14 +5,14 @@ use ::worker::PupWorker;
 use errors::PupErrorType;
 use manifest::PupManifestVersion;
 use ::logger::get_logger;
-use ::base_logging::Level;
 use utils::path::join;
 use utils::path::exists;
+use std::collections::HashMap;
 
 #[derive(Clone)]
 pub struct PupContext {
     /// The config file passed to each worker.
-    pub config: PathBuf,
+    pub env: Option<HashMap<String, String>>,
 
     /// The root folder for the set of workers which are available.
     pub workers: PathBuf,
@@ -24,18 +24,23 @@ pub struct PupContext {
 impl PupContext {
     /// Create a new context with a reference to the tasks
     /// root folder, the workers root folder and the config file.
-    pub fn new(config: &Path, tasks: &Path, workers: &Path) -> PupContext {
+    pub fn new(tasks: &Path, workers: &Path) -> PupContext {
         return PupContext {
-            config: PathBuf::from(config),
+            env: None,
             tasks: PathBuf::from(tasks),
             workers: PathBuf::from(workers),
         };
     }
 
+    /// Import an entire environment settings map
+    pub fn set_environment(&mut self, env: &HashMap<String, String>) {
+        self.env = Some(env.clone());
+    }
+
     /// Load a context by 'name string' in the format foo.bar.foobar#version
     pub fn load_task(&self, name: &str) -> Result<(PupTask, PupManifestVersion), PupError> {
         let mut logger = get_logger();
-        
+
         // Extract version & ident from name
         let mut ident = String::from(name);
         let mut version_ident: Option<String> = None;
@@ -85,6 +90,7 @@ impl PupContext {
             return Ok(PupWorker {
                 path: attemp1,
                 name: String::from(name),
+                env: self.env.as_ref().map_or_else(|| HashMap::new(), |v| v.clone()),
             });
         }
 
@@ -93,6 +99,7 @@ impl PupContext {
             return Ok(PupWorker {
                 path: attemp2,
                 name: String::from(name),
+                env: self.env.as_ref().map_or_else(|| HashMap::new(), |v| v.clone()),
             });
         }
 
@@ -105,12 +112,10 @@ impl PupContext {
 
 #[cfg(test)]
 mod tests {
-    use super::PupContext;
-    use std::env::current_dir;
     use utils::path::join;
     use std::path::PathBuf;
-    use ::fixtures::test_context_fixture;
-    
+    use ::testing::test_context_fixture;
+
     #[test]
     fn load_simple_task() {
         let context = test_context_fixture();

@@ -10,7 +10,10 @@ pub enum PupErrorType {
     MissingVersion,
     MissingWorker,
     MissingManifest,
+    MissingProcessManifest,
     RunnerAlreadyCompleted,
+    WorkerFailed,
+    InvalidRequest,
 }
 
 #[derive(Debug)]
@@ -22,7 +25,7 @@ pub struct PupError {
     pub error_detail: String,
 
     /// The inner error if any
-    pub error_inner: Option<Box<Error>>,
+    pub error_inner: Option<Box<Error + Send + 'static>>,
 }
 
 impl PupError {
@@ -34,11 +37,11 @@ impl PupError {
         };
     }
 
-    pub fn with_error<E: Error + 'static>(error_type: PupErrorType, error_detail: &str, inner_error: E) -> Self {
+    pub fn with_error<E: Error + Send + 'static>(error_type: PupErrorType, error_detail: &str, inner_error: E) -> Self {
         return PupError {
             error_type,
             error_detail: format!("Error: {:?}: {}", error_type, error_detail),
-            error_inner: Some(Box::new(inner_error) as Box<Error>),
+            error_inner: Some(Box::new(inner_error) as Box<Error + Send + 'static>),
         };
     }
 }
@@ -55,18 +58,18 @@ impl From<PupErrorType> for PupError {
 
 impl From<io::Error> for PupError {
     fn from(err: io::Error) -> Self {
-        return PupError::from(Box::new(err) as Box<Error>);
+        return PupError::from(Box::new(err) as Box<Error + Send + 'static>);
     }
 }
 
 impl From<serde_yaml::Error> for PupError {
     fn from(err: serde_yaml::Error) -> Self {
-        return PupError::from(Box::new(err) as Box<Error>);
+        return PupError::from(Box::new(err) as Box<Error + Send + 'static>);
     }
 }
 
-impl From<Box<Error>> for PupError {
-    fn from(err: Box<Error>) -> PupError {
+impl From<Box<Error + Send + 'static>> for PupError {
+    fn from(err: Box<Error + Send + 'static>) -> PupError {
         return PupError {
             error_type: PupErrorType::InnerError,
             error_detail: String::from(err.description()),

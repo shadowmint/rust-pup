@@ -11,6 +11,11 @@ use std::env;
 use std::path::Path;
 use std::thread::{spawn, JoinHandle};
 use std::error::Error;
+use runner::ExecRequest;
+use runner::exec::exec;
+use std::path::PathBuf;
+use runner::ExecResult;
+use std::collections::HashMap;
 
 /// An action that involves executing an external command
 pub struct PupExternalAction {
@@ -43,6 +48,7 @@ pub struct PupAction {
 }
 
 /// Options to use when 
+#[derive(Clone)]
 pub struct PupActionOptions {
     /// Is this a dry run? If so, don't actually execute the task.
     pub dry_run: bool,
@@ -104,7 +110,7 @@ impl PupAction {
 
     /// Run this task and all child tasks
     pub fn run(&mut self, logger: &mut Logger, options: &PupActionOptions) -> Result<(), PupError> {
-        if  options.dry_run {
+        if options.dry_run {
             self.info(logger, "Dryrun. No tasks will be executed", 1);
         }
         self.run_internal(logger, options, 1)?;
@@ -131,15 +137,22 @@ impl PupAction {
             Some(ref ext) => {
                 // Move to folder
                 self.info(logger, &format!("Using: {}", ext.version.path.to_str().unwrap()), depth + 1);
-                try_run_cwd(&ext.version.path);
+                try_run_cwd(&ext.version.path)?;
 
                 // Invoke worker stream
                 if options.dry_run {
                     self.info(logger, &format!("Exec: (skipped) {} {}", ext.worker.path.to_str().unwrap(), options.args.join(" ")), depth + 1);
                 } else {
                     self.info(logger, &format!("Exec: {} {}", ext.worker.path.to_str().unwrap(), options.args.join(" ")), depth + 1);
-                    let handle = try_run_task(options)?;
-                    handle.join();
+                    match try_run_task(&ext.worker.path, options, &ext.worker.env).join() {
+                        Ok(result) => {}
+                        Err(err) => {
+                            return Err(PupError::with_message(
+                                PupErrorType::WorkerFailed,
+                                &format!("Failed to execute worker: {:?}", err),
+                            ));
+                        }
+                    };
                 }
 
                 self.info(logger, &format!("Finished task: {} #{}", ext.task.name, ext.version.version), depth + 1);
@@ -171,8 +184,15 @@ fn try_run_cwd(path: &Path) -> Result<(), PupError> {
     };
 }
 
-fn try_run_task(options: &PupActionOptions) -> Result<JoinHandle<usize>, PupError> {
-    return Ok(spawn(move || {
-        return 0;
-    }));
+fn try_run_task(binary_path: &Path, options: &PupActionOptions, env: &HashMap<String, String>) -> JoinHandle<Result<ExecResult, PupError>> {
+    let owned_path = PathBuf::from(binary_path);
+    let owned_options = options.clone();
+    let owned_env = env.clone();
+    return spawn(move || {
+        return exec(ExecRequest {
+            env: owned_env,
+            binary_path: owned_path,
+            args: owned_options.args,
+        });
+    });
 }

@@ -11,10 +11,14 @@ mod errors;
 mod utils;
 mod runner;
 mod worker;
-mod logger;
+mod process;
 
-#[cfg(test)]
-mod fixtures;
+pub mod logger;
+pub mod testing;
+
+pub use context::PupContext;
+pub use runner::PupActionOptions;
+pub use errors::{PupError, PupErrorType};
 
 #[cfg(test)]
 mod tests {
