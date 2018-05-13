@@ -5,3 +5,7 @@ authors = ["Douglas Linder <linderd@iinet.net.au>"]
 
 [dependencies.pup-core]
 path = "../pup-core"
+
+[dependencies.base-logging]
+git = "https://github.com/shadowmint/rust-base-logging"
+branch = "master"

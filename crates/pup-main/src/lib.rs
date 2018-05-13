@@ -1,4 +1,5 @@
 extern crate pup_core;
+extern crate base_logging;
 
 mod tasks;
 
@@ -24,7 +25,8 @@ pub fn pup_main(task: PupTask, args: HashMap<PupArg, String>) -> Result<u32, Pup
             if is_valid.is_err() {
                 return Err(is_valid.err().unwrap());
             }
-            return runner.run();
+            let mut logger = ::pup_core::logger::get_logger();
+            return runner.run(&mut logger);
         }
         None => Err(PupError::with_message(
             PupErrorType::InvalidRequest,

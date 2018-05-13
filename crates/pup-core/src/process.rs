@@ -14,10 +14,10 @@ use context::PupContext;
 use std::collections::HashMap;
 
 pub struct PupProcess {
-    manifest: PupProcessManifest,
+    pub manifest: PupProcessManifest,
 
     /// The root path to the process sequence
-    path: PathBuf,
+    pub path: PathBuf,
 }
 
 #[derive(Debug, Serialize, Deserialize)]

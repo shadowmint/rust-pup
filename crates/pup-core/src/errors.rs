@@ -14,6 +14,7 @@ pub enum PupErrorType {
     RunnerAlreadyCompleted,
     WorkerFailed,
     InvalidRequest,
+    MissingArgument,
 }
 
 #[derive(Debug)]

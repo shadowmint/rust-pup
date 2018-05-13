@@ -3,6 +3,7 @@ extern crate serde_derive;
 
 extern crate serde_yaml;
 extern crate base_logging;
+extern crate time;
 
 mod context;
 mod manifest;
@@ -19,6 +20,7 @@ pub mod testing;
 pub use context::PupContext;
 pub use runner::PupActionOptions;
 pub use errors::{PupError, PupErrorType};
+pub use process::PupProcess;
 
 #[cfg(test)]
 mod tests {
