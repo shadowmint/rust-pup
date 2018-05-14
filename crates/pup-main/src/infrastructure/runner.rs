@@ -11,5 +11,5 @@ pub trait PupTaskRunner {
     fn ready(&self) -> bool;
 
     /// Actually run.
-    fn run(&mut self, logger: &mut Logger) -> Result<u32, PupError>;
+    fn run(&mut self, logger: &mut Logger) -> Result<(), PupError>;
 }

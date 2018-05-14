@@ -1,10 +1,8 @@
 use std::fmt;
 use ::context::PupContext;
 use ::errors::{PupError, PupErrorType};
-use ::task::PupTask;
-use ::manifest::PupManifestVersion;
-use ::worker::{PupWorker, PupWorkerResult};
-use ::runner::{PupAction, PupExternalAction};
+use ::runner::PupAction;
+use utils::path;
 use logger::get_logger;
 use runner::action::PupActionOptions;
 
@@ -70,7 +68,7 @@ fn debug_print(f: &mut fmt::Formatter, action: &PupAction, offset: usize) {
     let _ = write!(f, " {} #{}", ext.task.name, ext.version.version);
 
     // Action
-    let _ = write!(f, " ({} -> {})\n", ext.worker.name, ext.version.path.to_str().unwrap());
+    let _ = write!(f, " ({} -> {})\n", ext.worker.name, path::display(&ext.version.path));
 
     for child in action.children.iter() {
         debug_print(f, child, offset + 1);

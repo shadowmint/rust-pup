@@ -1,6 +1,9 @@
 #[macro_use]
 extern crate serde_derive;
 
+#[macro_use]
+extern crate lazy_static;
+
 extern crate serde_yaml;
 extern crate base_logging;
 extern crate time;
@@ -9,11 +12,11 @@ mod context;
 mod manifest;
 mod task;
 mod errors;
-mod utils;
 mod runner;
 mod worker;
 mod process;
 
+pub mod utils;
 pub mod logger;
 pub mod testing;
 

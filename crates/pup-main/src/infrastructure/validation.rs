@@ -1,7 +1,7 @@
 use ::PupArg;
 use ::pup_core::{PupError, PupErrorType};
 use std::collections::HashMap;
-use tasks::PupTaskRunner;
+use infrastructure::runner::PupTaskRunner;
 
 pub fn require_key(args: &HashMap<PupArg, String>, required: PupArg) -> Result<(), PupError> {
     if !args.contains_key(&required) {
@@ -11,6 +11,15 @@ pub fn require_key(args: &HashMap<PupArg, String>, required: PupArg) -> Result<(
         ));
     }
     return Ok(());
+}
+
+pub fn boolean_value(args: &HashMap<PupArg, String>, key: PupArg) -> Result<bool, PupError> {
+    if !args.contains_key(&key) {
+        return Ok(false);
+    }
+
+    let value = args[&key].to_string();
+    return Ok(value != "" && value != "false" && value != "0");
 }
 
 pub fn is_ok(target: &impl PupTaskRunner) -> Result<(), PupError> {

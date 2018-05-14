@@ -1,5 +1,5 @@
 [package]
-name = "pup-core"
+name = "pup-worker"
 version = "0.1.0"
 authors = [""]
 

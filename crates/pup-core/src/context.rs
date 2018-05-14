@@ -4,12 +4,12 @@ use ::errors::PupError;
 use ::worker::PupWorker;
 use errors::PupErrorType;
 use manifest::PupManifestVersion;
-use ::logger::get_logger;
 use utils::path::join;
 use utils::path::exists;
 use std::collections::HashMap;
+use utils::path;
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct PupContext {
     /// The config file passed to each worker.
     pub env: Option<HashMap<String, String>>,
@@ -39,8 +39,6 @@ impl PupContext {
 
     /// Load a context by 'name string' in the format foo.bar.foobar#version
     pub fn load_task(&self, name: &str) -> Result<(PupTask, PupManifestVersion), PupError> {
-        let mut logger = get_logger();
-
         // Extract version & ident from name
         let mut ident = String::from(name);
         let mut version_ident: Option<String> = None;
@@ -63,7 +61,7 @@ impl PupContext {
                 if matched.is_none() {
                     return Err(PupError::with_message(
                         PupErrorType::MissingVersion,
-                        &format!("No version matching '{:?}' on {:?}", version_id, task.path),
+                        &format!("No version matching '{:?}' on {}", version_id, path::display(task.path)),
                     ));
                 }
                 matched.unwrap().clone()
@@ -72,7 +70,7 @@ impl PupContext {
                 if !task.manifest.versions.len() == 0 {
                     return Err(PupError::with_message(
                         PupErrorType::MissingVersion,
-                        &format!("No versions available on {:?}", task.path),
+                        &format!("No versions available on {}", path::display(task.path)),
                     ));
                 }
                 task.manifest.versions[task.manifest.versions.len() - 1].clone()
@@ -105,7 +103,7 @@ impl PupContext {
 
         return Err(PupError::with_message(
             PupErrorType::MissingWorker,
-            &format!("Unable to find any worker '{:?}' in {:?}", name, self.workers),
+            &format!("Unable to find any worker '{}' in {}", name, path::display(&self.workers)),
         ));
     }
 }

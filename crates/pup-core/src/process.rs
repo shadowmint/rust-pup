@@ -8,23 +8,28 @@ use std::fs::File;
 use std::io::Read;
 use std::path::PathBuf;
 use std::error::Error;
-use std::fs;
-use utils::path::exists;
 use context::PupContext;
 use std::collections::HashMap;
+use task::PupTask;
+use manifest::PupManifestVersion;
+use runner::PupRunner;
 
+#[derive(Debug)]
 pub struct PupProcess {
     pub manifest: PupProcessManifest,
 
     /// The root path to the process sequence
     pub path: PathBuf,
+
+    /// The internal context instance
+    _context: Option<PupContext>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct PupProcessManifest {
     /// The set of root level tasks to expose
     pub tasks: Vec<String>,
-    
+
     /// The folder to use for workers
     pub workers_path: String,
 
@@ -69,15 +74,33 @@ impl PupProcess {
         Ok(PupProcess {
             manifest,
             path: PathBuf::from(path.as_ref()),
+            _context: None,
         })
     }
 
-    pub fn context(&self) -> PupContext {
-        let mut context = PupContext::new(
-            &join(&self.path, &self.manifest.tasks_path),
-            &join(&self.path, &self.manifest.workers_path));
-        context.set_environment(&self.manifest.environment);
-        return context;
+    fn process_path(&self) -> &Path {
+        return self.path.parent().unwrap();
+    }
+
+    pub fn context(&mut self) -> &PupContext {
+        if self._context.is_none() {
+            let mut context = PupContext::new(
+                &join(&self.process_path(), &self.manifest.tasks_path),
+                &join(&self.process_path(), &self.manifest.workers_path));
+            context.set_environment(&self.manifest.environment);
+            self._context = Some(context);
+        }
+        return self._context.as_ref().unwrap();
+    }
+
+    pub fn task(&mut self, task: &str) -> Result<(PupTask, PupManifestVersion), PupError> {
+        return self.context().load_task(task);
+    }
+
+    pub fn runner(&mut self, task: &str) -> Result<PupRunner, PupError> {
+        let mut runner = PupRunner::new(self.context());
+        let _ = runner.add(task)?;
+        return Ok(runner);
     }
 }
 

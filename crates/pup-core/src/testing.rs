@@ -1,8 +1,8 @@
 use ::context::PupContext;
-use std::env::current_dir;
 use utils::path::join;
 use std::path::PathBuf;
 use std::collections::HashMap;
+use std::env::current_exe;
 
 pub fn test_context_fixture() -> PupContext {
     let root = test_context_folder();
@@ -13,7 +13,7 @@ pub fn test_context_fixture() -> PupContext {
     let mut fake_env: HashMap<String, String> = HashMap::new();
     fake_env.insert(String::from("foo"), String::from("bar"));
     fake_env.insert(String::from("config"), String::from("test"));
-    
+
     context.set_environment(&fake_env);
     return context;
 }
@@ -23,7 +23,8 @@ pub fn test_context_process_path() -> PathBuf {
 }
 
 pub fn test_context_folder() -> PathBuf {
-    let core_folder = PathBuf::from(current_dir().unwrap());
-    let root = core_folder.join("..").join("..").join("sample");
-    return root;
+    let test_exe = PathBuf::from(current_exe().unwrap());
+    let test_exe_folder = test_exe.parent().unwrap();
+    let test_data_folder = test_exe_folder.join("..").join("..").join("..").join("..").join("..").join("sample");
+    return test_data_folder.canonicalize().unwrap();
 }

@@ -4,7 +4,6 @@ use ::errors::{PupError};
 use ::utils::path::join;
 use std::path::Path;
 use std::path::PathBuf;
-use std::error::Error;
 
 /// A single folder with an action in it is a task.
 pub struct PupTask {
@@ -12,7 +11,7 @@ pub struct PupTask {
     pub name: String,
 
     /// The context folder
-    context: PupContext,
+    //context: PupContext,
 
     /// The manifest data
     pub manifest: PupManifest,
@@ -29,7 +28,7 @@ impl PupTask {
             Ok(manifest) => {
                 let task = PupTask {
                     name: String::from(name),
-                    context,
+                   // context,
                     manifest,
                     path: PathBuf::from(manifest_path),
                 };

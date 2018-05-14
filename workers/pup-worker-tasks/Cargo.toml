@@ -1,5 +1,5 @@
 [package]
-name = "pup-powershell"
+name = "pup-worker-tasks"
 version = "0.1.0"
 authors = [""]
 

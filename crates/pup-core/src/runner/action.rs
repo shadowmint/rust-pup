@@ -1,4 +1,3 @@
-use std::fmt;
 use ::context::PupContext;
 use ::errors::{PupError, PupErrorType};
 use ::task::PupTask;
@@ -16,6 +15,7 @@ use runner::exec::exec;
 use std::path::PathBuf;
 use runner::ExecResult;
 use std::collections::HashMap;
+use utils::path;
 
 /// An action that involves executing an external command
 pub struct PupExternalAction {
@@ -73,7 +73,7 @@ impl PupAction {
         // TODO: Recursive runaway check here
         // Load self
         let mut logger = get_logger();
-        logger.log(Level::Info, format!("Loading task: {}", name));
+        logger.log(Level::Debug, format!("Loading task: {}", name));
 
         let maybe_task = context.load_task(name);
         if maybe_task.is_err() {
@@ -91,7 +91,7 @@ impl PupAction {
 
         // Load children
         for child_ident in &version.steps {
-            logger.log(Level::Info, format!("Loading child task: {}", child_ident));
+            logger.log(Level::Debug, format!("Loading child task: {}", child_ident));
             let mut child_action = PupAction::new();
             child_action.load(context, &child_ident)?;
             self.children.push(child_action);
@@ -136,16 +136,34 @@ impl PupAction {
         match self.external {
             Some(ref ext) => {
                 // Move to folder
-                self.info(logger, &format!("Using: {}", ext.version.path.to_str().unwrap()), depth + 1);
+                self.info(logger, &format!("Using: {}", path::display(&ext.version.path)), depth + 1);
                 try_run_cwd(&ext.version.path)?;
 
                 // Invoke worker stream
                 if options.dry_run {
-                    self.info(logger, &format!("Exec: (skipped) {} {}", ext.worker.path.to_str().unwrap(), options.args.join(" ")), depth + 1);
+                    self.info(logger, &format!("Exec: (skipped) {} {}", path::display(&ext.worker.path), options.args.join(" ")), depth + 1);
                 } else {
-                    self.info(logger, &format!("Exec: {} {}", ext.worker.path.to_str().unwrap(), options.args.join(" ")), depth + 1);
+                    self.info(logger, &format!("Exec: {} {}", path::display(&ext.worker.path), options.args.join(" ")), depth + 1);
                     match try_run_task(&ext.worker.path, options, &ext.worker.env).join() {
-                        Ok(result) => {}
+                        Ok(result) => {
+                            match result {
+                                Ok(exec_result) => {
+                                    if exec_result.return_code != 0 {
+                                        return Err(PupError::with_message(
+                                            PupErrorType::WorkerFailed,
+                                            &format!("Worker returned exit code: {}", exec_result.return_code),
+                                        ));
+                                    }
+                                    return Ok(());
+                                }
+                                Err(err) => {
+                                    return Err(PupError::with_message(
+                                        PupErrorType::WorkerFailed,
+                                        &format!("Failed to execute worker: {:?}", err),
+                                    ));
+                                }
+                            }
+                        }
                         Err(err) => {
                             return Err(PupError::with_message(
                                 PupErrorType::WorkerFailed,
