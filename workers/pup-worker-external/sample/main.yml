@@ -1,4 +1,4 @@
-task: dir
+task: ls
 args:
   - "{{FOO}}"
   - "{{BAR}}"

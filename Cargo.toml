@@ -4,3 +4,7 @@ version = "0.1.0"
 authors = [""]
 
 [dependencies]
+getopts = "0.2.17"
+
+[dependencies.pup-main]
+path = "crates/pup-main"
