@@ -34,7 +34,7 @@ impl PupError {
     pub fn with_message(error_type: PupErrorType, error_detail: &str) -> Self {
         return PupError {
             error_type,
-            error_detail: format!("Error: {:?}: {}", error_type, error_detail),
+            error_detail: format!("{:?}: {}", error_type, error_detail),
             error_inner: None,
         };
     }
