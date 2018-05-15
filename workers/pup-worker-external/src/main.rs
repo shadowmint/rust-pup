@@ -24,29 +24,63 @@ fn main() {
 
 fn main_() {
     let here = env::current_dir().unwrap();
-    let mut task = TaskManifest::try_from(&here);
+    trace(&format!("folder: {}", path::display(&here)));
+
+    let mut manifest = TaskManifest::try_from(&here);
     let mut reg = Handlebars::new();
-    let raw = task.args.clone();
 
-    let full_path = find_binary_from_task(&task.task);
-
+    // Copy environment variable for child
     let mut all_vars: HashMap<String, String> = HashMap::new();
     for (key, value) in env::vars() {
         all_vars.insert(key, value);
     }
 
-    for i in 0..raw.len() {
-        println!("RAW: {}", raw[i]);
-        task.args[i] = reg.render_template(&raw[i], &all_vars).unwrap();
-        println!("RENDERED: {}", task.args[i]);
-    }
+    // For each task
+    let mut offset = 0;
+    let count = manifest.tasks.len();
+    for task in manifest.tasks.iter_mut() {
+        offset += 1;
 
-    println!("RUN: {} {}", task.task, task.args.join(" "));
-    exec::exec(exec::ExecRequest {
-        binary_path: full_path,
-        args: task.args.clone(),
-        env: all_vars,
-    }).unwrap();
+        // Debug
+        println!();
+        if task.info.len() > 0 {
+            trace(&format!("running: {} ({}/{})", &task.info, offset, count));
+        } else {
+            trace(&format!("running: task ({}/{})", offset, count));
+        }
+
+        // Find binary to run
+        let full_path = find_binary_from_task(&task.task);
+
+        // Render arguments
+        let raw = task.args.clone();
+        for i in 0..raw.len() {
+            task.args[i] = reg.render_template(&raw[i], &all_vars).unwrap();
+        }
+
+        // Move to some other folder if required
+        if task.path != "" {
+            let rendered_path = reg.render_template(&task.path, &all_vars).unwrap();
+            trace(&format!("folder: {}", &rendered_path));
+            env::set_current_dir(&rendered_path).unwrap();
+        } else {
+            trace(&format!("folder: {}", path::display(&here)));
+        }
+
+        // Execute task
+        trace(&format!("exec: {} {}", task.task, task.args.join(" ")));
+        exec::exec(exec::ExecRequest {
+            binary_path: full_path,
+            args: task.args.clone(),
+            env: all_vars.clone(),
+        }).unwrap();
+
+        // Move back to original path
+    }
+}
+
+fn trace(message: &str) {
+    println!("pup-worker-external: {}", message);
 }
 
 fn find_binary_from_task(task: &str) -> PathBuf {
@@ -55,6 +89,19 @@ fn find_binary_from_task(task: &str) -> PathBuf {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct TaskManifest {
+    pub tasks: Vec<TaskItem>
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct TaskItem {
+    /// Some description of the task.
+    #[serde(default)]
+    pub info: String,
+
+    /// The path to execute in.
+    #[serde(default)]
+    pub path: String,
+
     /// The binary to execute
     pub task: String,
 
@@ -65,7 +112,6 @@ pub struct TaskManifest {
 impl TaskManifest {
     pub fn try_from(task_folder: &Path) -> Self {
         let manifest_path = task_folder.join("main.yml");
-        println!("{:?}", manifest_path);
         return Self::read_manifest(&manifest_path);
     }
 

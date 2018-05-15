@@ -112,7 +112,7 @@ mod tests {
     #[test]
     fn test_load_from_folder() {
         let sample_process = test_context_process_path();
-        let process = PupProcess::load_from(sample_process).unwrap();
+        let mut process = PupProcess::load_from(sample_process).unwrap();
         assert_eq!(process.manifest.environment.len(), 2);
         assert_eq!(process.manifest.environment["foo"], "bar");
         let context = process.context();

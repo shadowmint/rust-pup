@@ -4,6 +4,7 @@ extern crate serde_derive;
 #[macro_use]
 extern crate lazy_static;
 
+extern crate dunce;
 extern crate serde_yaml;
 extern crate base_logging;
 extern crate time;

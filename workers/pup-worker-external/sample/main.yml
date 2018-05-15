@@ -1,4 +1,12 @@
-task: dir
-args:
-  - "{{FOO}}"
-  - "{{BAR}}"
+tasks:
+  - task: ls
+    info: whatever 1
+    args:
+    - "{{FOO}}"
+    - "{{BAR}}"
+
+  - task: ls
+    info: whatever 2
+    path: "{{BAR}}" 
+    args:
+      - .

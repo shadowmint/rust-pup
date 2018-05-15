@@ -1,5 +1,5 @@
 [package]
-name = "pup-external"
+name = "pup-worker-external"
 version = "0.1.0"
 authors = [""]
 

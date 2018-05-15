@@ -71,7 +71,7 @@ impl PupManifest {
                     &format!("Missing version directory: {:?}", &version_path),
                 ));
             }
-            version.path = PathBuf::from(path);
+            version.path = version_path;
         }
         return Ok(());
     }

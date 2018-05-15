@@ -8,6 +8,9 @@ use utils::path::join;
 use utils::path::exists;
 use std::collections::HashMap;
 use utils::path;
+use logger::get_logger;
+use base_logging::Level;
+use std::fs::canonicalize;
 
 #[derive(Clone, Debug)]
 pub struct PupContext {
@@ -27,8 +30,8 @@ impl PupContext {
     pub fn new(tasks: &Path, workers: &Path) -> PupContext {
         return PupContext {
             env: None,
-            tasks: PathBuf::from(tasks),
-            workers: PathBuf::from(workers),
+            tasks: canonicalize(PathBuf::from(tasks)).unwrap(),
+            workers: canonicalize(PathBuf::from(workers)).unwrap(),
         };
     }
 
@@ -82,20 +85,26 @@ impl PupContext {
 
     /// Find a worker by the name 'name' in the workers folder, and return a PupWorker for it.
     pub fn load_worker(&self, name: &str) -> Result<PupWorker, PupError> {
+        let mut logger = get_logger();
+        
         // TODO: Cache results.
-        let attemp1 = join(&self.workers, name);
-        if exists(&attemp1) {
+        let attempt1 = join(&self.workers, name);
+        logger.log(Level::Debug, format!("Checking for: {}", path::display(&attempt1)));
+        if exists(&attempt1) {
+            logger.log(Level::Debug, format!("Found: {}", path::display(&attempt1)));
             return Ok(PupWorker {
-                path: attemp1,
+                path: attempt1,
                 name: String::from(name),
                 env: self.env.as_ref().map_or_else(|| HashMap::new(), |v| v.clone()),
             });
         }
-
-        let attemp2 = join(&self.workers, join(name, ".exe"));
-        if exists(&attemp2) {
+        
+        let attempt2 = join(&self.workers, format!("{}.exe", name));
+        logger.log(Level::Debug, format!("Checking for: {}", path::display(&attempt2)));
+        if exists(&attempt2) {
+            logger.log(Level::Debug, format!("Found: {}", path::display(&attempt2)));
             return Ok(PupWorker {
-                path: attemp2,
+                path: attempt2,
                 name: String::from(name),
                 env: self.env.as_ref().map_or_else(|| HashMap::new(), |v| v.clone()),
             });

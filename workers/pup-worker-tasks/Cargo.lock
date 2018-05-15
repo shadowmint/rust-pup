@@ -1,4 +1,4 @@
 [[package]]
-name = "pup-tasks"
+name = "pup-worker-tasks"
 version = "0.1.0"
 

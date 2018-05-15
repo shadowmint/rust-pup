@@ -5,6 +5,7 @@ use ::manifest::PupManifestVersion;
 use ::worker::{PupWorker, PupWorkerResult};
 use ::base_logging::Level;
 use ::logger::get_logger;
+use ::dunce;
 use base_logging::Logger;
 use std::env;
 use std::path::Path;
@@ -137,7 +138,7 @@ impl PupAction {
             Some(ref ext) => {
                 // Move to folder
                 self.info(logger, &format!("Using: {}", path::display(&ext.version.path)), depth + 1);
-                try_run_cwd(&ext.version.path)?;
+                self.try_run_cwd(&ext.version.path, logger, depth)?;
 
                 // Invoke worker stream
                 if options.dry_run {
@@ -185,21 +186,31 @@ impl PupAction {
         let prefix = "--".repeat(depth);
         logger.log(Level::Info, format!("{} {}", prefix, message));
     }
-}
 
-fn try_run_cwd(path: &Path) -> Result<(), PupError> {
-    return match env::set_current_dir(path) {
-        Ok(_) => {
-            Ok(())
-        }
-        Err(err) => {
-            Err(PupError::with_error(
-                PupErrorType::MissingVersionFolder,
-                &format!("Failed to set current dir to: {:?}", path),
-                err,
-            ))
-        }
-    };
+    fn try_run_cwd(&self, path: &Path, logger: &mut Logger, depth: usize) -> Result<(), PupError> {
+        // Convert UNC paths on windows, because it breaks things.
+        // Seriously. Powershell for example won't run without a signed certificate.
+        let path_to_use = match dunce::canonicalize(path) {
+            Ok(p) => p,
+            Err(err) => {
+                self.info(logger, &format!("Error converting path: {}", err.description()), depth + 1);
+                PathBuf::from(path)
+            }
+        };
+
+        return match env::set_current_dir(path_to_use) {
+            Ok(_) => {
+                Ok(())
+            }
+            Err(err) => {
+                Err(PupError::with_error(
+                    PupErrorType::MissingVersionFolder,
+                    &format!("Failed to set current dir to: {:?}", path),
+                    err,
+                ))
+            }
+        };
+    }
 }
 
 fn try_run_task(binary_path: &Path, options: &PupActionOptions, env: &HashMap<String, String>) -> JoinHandle<Result<ExecResult, PupError>> {
