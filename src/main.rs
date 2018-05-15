@@ -6,6 +6,7 @@ use getopts::Options;
 use pup_main::{pup_enable_debug, pup_main, PupArg, PupTask};
 use std::collections::HashMap;
 use std::process;
+use std::error::Error;
 
 fn print_usage(program: &str, opts: Options) {
     let brief = format!("Usage: {} FILE [options]", program);
@@ -31,14 +32,17 @@ fn main() {
 
     let matches = match opts.parse(&args[1..]) {
         Ok(m) => { m }
-        Err(f) => { panic!(f.to_string()) }
+        Err(f) => {
+            print_err(&format!("{}", f.description()), &program, opts);
+            return;
+        }
     };
 
     let process_manifest = if !matches.free.is_empty() {
         matches.free[0].clone()
     } else {
         print_usage(&program, opts);
-        return;
+        process::exit(1);
     };
 
     if matches.opt_present("h") {
@@ -78,7 +82,10 @@ fn main() {
         args.insert(PupArg::TaskId, matches.opt_str("t").unwrap());
         match pup_main(PupTask::RunTask, args) {
             Ok(_) => process::exit(0),
-            Err(_) => process::exit(1)
+            Err(err) => {
+                print_err(err.description(), &program, opts);
+                process::exit(1)
+            }
         };
     }
 
@@ -87,7 +94,10 @@ fn main() {
         args.insert(PupArg::TaskId, matches.opt_str("t").unwrap());
         match pup_main(PupTask::RunTask, args) {
             Ok(_) => process::exit(0),
-            Err(_) => process::exit(1)
+            Err(err) => {
+                print_err(err.description(), &program, opts);
+                process::exit(1)
+            }
         };
     }
 
@@ -97,6 +107,9 @@ fn main() {
     }
     match pup_main(PupTask::ListAvailableTasks, args) {
         Ok(_) => process::exit(0),
-        Err(_) => process::exit(1)
+        Err(err) => {
+            print_err(err.description(), &program, opts);
+            process::exit(1)
+        }
     };
 }
