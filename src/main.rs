@@ -13,9 +13,13 @@ fn print_usage(program: &str, opts: Options) {
     print!("{}", opts.usage(&brief));
 }
 
-fn print_err(error: &str, program: &str, opts: Options) {
+fn err_bad_usage(error: &str, program: &str, opts: Options) {
     println!("Error: {}", error);
     print_usage(program, opts);
+}
+
+fn err_failure(error: &str) {
+    println!("Error: {}", error);
 }
 
 fn main() {
@@ -33,7 +37,7 @@ fn main() {
     let matches = match opts.parse(&args[1..]) {
         Ok(m) => { m }
         Err(f) => {
-            print_err(&format!("{}", f.description()), &program, opts);
+            err_bad_usage(&format!("{}", f.description()), &program, opts);
             return;
         }
     };
@@ -60,21 +64,24 @@ fn main() {
     // Plan
     if matches.opt_present("p") {
         if !matches.opt_present("t") {
-            print_err("--plan requires a task id with --task", &program, opts);
+            err_bad_usage("--plan requires a task id with --task", &program, opts);
             process::exit(1);
         }
 
         args.insert(PupArg::TaskId, matches.opt_str("t").unwrap());
         match pup_main(PupTask::ShowExecutionPlan, args) {
             Ok(_) => process::exit(0),
-            Err(_) => process::exit(1)
+            Err(err) => {
+                err_failure(err.description());
+                process::exit(1)
+            }
         };
     }
 
     // Dryrun
     if matches.opt_present("d") {
         if !matches.opt_present("t") {
-            print_err("--dryrun requires a task id with --task", &program, opts);
+            err_bad_usage("--dryrun requires a task id with --task", &program, opts);
             process::exit(1);
         }
 
@@ -83,7 +90,7 @@ fn main() {
         match pup_main(PupTask::RunTask, args) {
             Ok(_) => process::exit(0),
             Err(err) => {
-                print_err(err.description(), &program, opts);
+                err_failure(err.description());
                 process::exit(1)
             }
         };
@@ -95,7 +102,7 @@ fn main() {
         match pup_main(PupTask::RunTask, args) {
             Ok(_) => process::exit(0),
             Err(err) => {
-                print_err(err.description(), &program, opts);
+                err_failure(err.description());
                 process::exit(1)
             }
         };
@@ -108,7 +115,7 @@ fn main() {
     match pup_main(PupTask::ListAvailableTasks, args) {
         Ok(_) => process::exit(0),
         Err(err) => {
-            print_err(err.description(), &program, opts);
+            err_failure(err.description());
             process::exit(1)
         }
     };

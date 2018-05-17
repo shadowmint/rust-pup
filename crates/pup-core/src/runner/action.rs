@@ -6,6 +6,7 @@ use ::worker::{PupWorker, PupWorkerResult};
 use ::base_logging::Level;
 use ::logger::get_logger;
 use ::dunce;
+use ::time;
 use base_logging::Logger;
 use std::env;
 use std::path::Path;
@@ -17,6 +18,8 @@ use std::path::PathBuf;
 use runner::ExecResult;
 use std::collections::HashMap;
 use utils::path;
+use time::Duration;
+use time::Tm;
 
 /// An action that involves executing an external command
 pub struct PupExternalAction {
@@ -31,6 +34,9 @@ pub struct PupExternalAction {
 
     /// The result bucker for the external runner
     pub result: PupWorkerResult,
+
+    /// The environment to use for this runner,
+    pub env: HashMap<String, String>,
 }
 
 /// A task to be execute by the runner
@@ -78,17 +84,23 @@ impl PupAction {
 
         let maybe_task = context.load_task(name);
         if maybe_task.is_err() {
-            logger.log(Level::Warn, format!("Failed to load task: {}: {}", name, maybe_task.as_ref().err().unwrap().description()));
+            logger.log(Level::Debug, format!("Failed to load task: {}: {}", name, maybe_task.as_ref().err().unwrap().description()));
             return Err(maybe_task.err().unwrap());
         }
         let (task, version) = maybe_task.unwrap();
 
         let maybe_worker = context.load_worker(&task.manifest.action);
         if maybe_worker.is_err() {
-            logger.log(Level::Warn, format!("Failed to load worker: {}: {}", name, maybe_worker.as_ref().err().unwrap().description()));
+            logger.log(Level::Debug, format!("Failed to load worker: {}: {}", name, maybe_worker.as_ref().err().unwrap().description()));
             return Err(maybe_worker.err().unwrap());
         }
         let worker = maybe_worker.unwrap();
+
+        // Combine envs
+        let mut combined_env = worker.env.clone();
+        for key in version.env.keys() {
+            combined_env.insert(key.to_string(), version.env[key].to_string());
+        }
 
         // Load children
         for child_ident in &version.steps {
@@ -104,6 +116,7 @@ impl PupAction {
             task,
             version,
             result: PupWorkerResult {},
+            env: combined_env,
         });
 
         Ok(())
@@ -114,23 +127,57 @@ impl PupAction {
         if options.dry_run {
             self.info(logger, "Dryrun. No tasks will be executed", 1);
         }
-        self.run_internal(logger, options, 1)?;
-        return Ok(());
+        return self.run_timed(logger, options, 1);
+    }
+
+    /// Run this task and all child tasks, timed
+    fn run_timed(&mut self, logger: &mut Logger, options: &PupActionOptions, depth: usize) -> Result<(), PupError> {
+        let time_start = time::now();
+        let rtn = self.run_internal(logger, options, depth, time_start);
+        let time_stop = time::now();
+        let task_duration = time_stop - time_start;
+
+        let result = match rtn.is_err() {
+            true => "FAILED",
+            false => "Finished"
+        };
+
+        match self.external {
+            Some(ref ext) => {
+                self.info(logger, &format!(
+                    "{} task: {} #{} ({}, {})",
+                    result,
+                    ext.task.name,
+                    ext.version.version,
+                    format_time(time_stop),
+                    format_duration(task_duration)), depth + 1);
+            }
+            None => {
+                self.info(logger, &format!(
+                    "{} task ({}, {})",
+                    result,
+                    format_time(time_stop),
+                    format_duration(task_duration)), depth + 1);
+            }
+        }
+
+        return rtn;
     }
 
     /// Run this task and all child tasks
-    fn run_internal(&mut self, logger: &mut Logger, options: &PupActionOptions, depth: usize) -> Result<(), PupError> {
+    fn run_internal(&mut self, logger: &mut Logger, options: &PupActionOptions, depth: usize, time_start: Tm) -> Result<(), PupError> {
         match self.external {
             Some(ref ext) => {
-                self.info(logger, &format!("Entering task: {} #{}", ext.task.name, ext.version.version), depth);
+                self.info(logger, &format!("Entering task: {} #{} ({})", ext.task.name, ext.version.version, format_time(time_start)), depth);
             }
             None => {
-                self.info(logger, "Running tasks", depth);
+                self.info(logger, &format!("Entering task ({})", format_time(time_start)), depth);
             }
         }
+
         // Execute dependency steps first
         for child in self.children.iter_mut() {
-            child.run_internal(logger, options, depth + 1)?;
+            child.run_timed(logger, options, depth + 1)?;
         }
 
         // Now execute our own step, if required.
@@ -143,6 +190,9 @@ impl PupAction {
                 // Invoke worker stream
                 if options.dry_run {
                     self.info(logger, &format!("Exec: (skipped) {} {}", path::display(&ext.worker.path), options.args.join(" ")), depth + 1);
+                    for key in ext.env.keys() {
+                        self.info(logger, &format!("Env: {}: {}", key, ext.env[key]), depth + 2);
+                    }
                 } else {
                     self.info(logger, &format!("Exec: {} {}", path::display(&ext.worker.path), options.args.join(" ")), depth + 1);
                     match try_run_task(&ext.worker.path, options, &ext.worker.env).join() {
@@ -173,8 +223,6 @@ impl PupAction {
                         }
                     };
                 }
-
-                self.info(logger, &format!("Finished task: {} #{}", ext.task.name, ext.version.version), depth + 1);
             }
             None => {}
         }
@@ -224,4 +272,25 @@ fn try_run_task(binary_path: &Path, options: &PupActionOptions, env: &HashMap<St
             args: owned_options.args,
         });
     });
+}
+
+fn format_duration(d: Duration) -> String {
+    let mut seconds = d.num_seconds();
+    let minutes: i64 = seconds / 60;
+    if minutes > 0 {
+        seconds = seconds - minutes * 60;
+    }
+    let ms = d.num_milliseconds() - seconds * 1000;
+    return match minutes {
+        m if m > 0 => format!("{}min {}.{:04}s", m, seconds, ms),
+        _ => format!("{}.{:04}s", seconds, ms)
+    };
+}
+
+fn format_time(tm: Tm) -> String {
+    let timestring = match time::strftime("%b %d %H:%M:%S", &tm) {
+        Ok(i) => i,
+        Err(_) => String::from("(unknown time)")
+    };
+    return timestring;
 }

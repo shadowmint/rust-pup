@@ -1,12 +1,17 @@
 tasks:
-  - task: ls
+  - task: dir
     info: whatever 1
     args:
     - "{{FOO}}"
     - "{{BAR}}"
 
-  - task: ls
+  - task: dir
     info: whatever 2
     path: "{{BAR}}" 
     args:
       - .
+
+  - task: dir
+    info: whatever 3
+    args:
+      - "{{FOO}}\{{BAR}}"

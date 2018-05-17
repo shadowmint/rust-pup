@@ -42,7 +42,7 @@ impl PupError {
     pub fn with_error<E: Error + Send + 'static>(error_type: PupErrorType, error_detail: &str, inner_error: E) -> Self {
         return PupError {
             error_type,
-            error_detail: format!("Error: {:?}: {}", error_type, error_detail),
+            error_detail: format!("{:?}: {}", error_type, error_detail),
             error_inner: Some(Box::new(inner_error) as Box<Error + Send + 'static>),
         };
     }
@@ -52,7 +52,7 @@ impl From<PupErrorType> for PupError {
     fn from(error_type: PupErrorType) -> Self {
         return PupError {
             error_type,
-            error_detail: format!("Error: {:?}", error_type),
+            error_detail: format!("{:?}", error_type),
             error_inner: None,
         };
     }

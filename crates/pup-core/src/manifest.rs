@@ -9,6 +9,8 @@ use std::io::Read;
 use std::path::PathBuf;
 use std::error::Error;
 use utils::path::exists;
+use utils::path;
+use std::collections::HashMap;
 
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -33,6 +35,10 @@ pub struct PupManifestVersion {
     #[serde(default)]
     pub steps: Vec<String>,
 
+    /// The set of extra env variables just for this task.
+    #[serde(default)]
+    pub env: HashMap<String, String>,
+    
     /// The path to the folder for this version
     #[serde(skip)]
     pub path: PathBuf,
@@ -44,7 +50,7 @@ impl PupManifest {
         return PupManifest::read_manifest(task_folder, &manifest_path).map_err(|err| {
             return PupError::with_error(
                 PupErrorType::MissingManifest,
-                &format!("Unable to read manifest: {:?}: {:?}", manifest_path, err.description()),
+                &format!("Unable to read manifest: {}: {:?}", path::display(manifest_path), err.description()),
                 err,
             );
         });
@@ -68,7 +74,7 @@ impl PupManifest {
             if !exists(&version_path) {
                 return Err(PupError::with_message(
                     PupErrorType::MissingVersionFolder,
-                    &format!("Missing version directory: {:?}", &version_path),
+                    &format!("Missing version directory: {}", path::display(&version_path)),
                 ));
             }
             version.path = version_path;

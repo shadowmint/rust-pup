@@ -54,7 +54,7 @@ impl PupTaskRunner for TaskRunnerShowPlan {
                 Ok(())
             }
             Err(err) => {
-                logger.log(Level::Error, format!("Failed: {}", err.description()));
+                logger.log(Level::Debug, format!("Failed: {}", err.description()));
                 Err(err)
             }
         }

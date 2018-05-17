@@ -1,0 +1,5 @@
+msbuild:
+  info: whatever 1
+  path: .
+  args:
+  - "-h"

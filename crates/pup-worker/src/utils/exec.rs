@@ -4,6 +4,8 @@ use std::path::PathBuf;
 use std::collections::HashMap;
 use std::error::Error;
 use utils::path;
+use std::process::Child;
+use std::io::Read;
 
 pub struct ExecRequest {
     /// The set of environment variables to add
@@ -14,15 +16,28 @@ pub struct ExecRequest {
 
     /// The set of arguments to use
     pub args: Vec<String>,
+
+    /// Should we capture output?
+    pub capture: bool,
 }
 
 #[derive(Debug)]
 pub struct ExecResult {
     /// Return code from executing the binary
     pub return_code: i32,
+
+    /// Output, if we captured it
+    pub stdout: Option<String>,
 }
 
 pub fn exec(request: ExecRequest) -> Result<ExecResult, PupError> {
+    match request.capture {
+        true => exec_capture(request),
+        false => exec_stream(request)
+    }
+}
+
+fn exec_stream(request: ExecRequest) -> Result<ExecResult, PupError> {
     match Command::new(&request.binary_path)
         .args(&request.args)
         .stdout(Stdio::inherit())
@@ -32,7 +47,30 @@ pub fn exec(request: ExecRequest) -> Result<ExecResult, PupError> {
         Ok(mut cmd) => {
             let return_code = cmd.wait()?;
             return Ok(ExecResult {
-                return_code: return_code.code().unwrap()
+                return_code: return_code.code().unwrap(),
+                stdout: None,
+            });
+        }
+        Err(err) => {
+            return Err(PupError::with_error(
+                PupErrorType::FailedToSpawnWorker,
+                &format!("Unable to spawn worker: {}: {}", path::display(&request.binary_path), err.description()),
+                err));
+        }
+    };
+}
+
+fn exec_capture(request: ExecRequest) -> Result<ExecResult, PupError> {
+    match Command::new(&request.binary_path)
+        .args(&request.args)
+        .envs(&request.env)
+        .output() { 
+        Ok(mut output) => {
+            let out = String::from_utf8_lossy(&output.stdout);
+            let return_code = output.status;
+            return Ok(ExecResult {
+                return_code: return_code.code().unwrap(),
+                stdout: Some(out.to_string()),
             });
         }
         Err(err) => {

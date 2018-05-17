@@ -62,7 +62,8 @@ impl PupTaskRunner for TaskRunnerListAvailable {
                         }
                     }
                     Err(err) => {
-                        logger.log(Level::Error, format!("Failed to process task: {}", err.description()));
+                        logger.log(Level::Debug, format!("Failed to process task: {}", err.description()));
+                        return Err(err);
                     }
                 }
             } else {

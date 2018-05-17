@@ -4,6 +4,7 @@ extern crate lazy_static;
 extern crate serde_yaml;
 extern crate base_logging;
 extern crate time;
+extern crate dunce;
 
 pub mod errors;
 pub mod utils;

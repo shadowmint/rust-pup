@@ -17,6 +17,7 @@ use std::error::Error;
 use std::env;
 use handlebars::Handlebars;
 use std::collections::HashMap;
+use std::process;
 
 fn main() {
     main_();
@@ -65,17 +66,23 @@ fn main_() {
             env::set_current_dir(&rendered_path).unwrap();
         } else {
             trace(&format!("folder: {}", path::display(&here)));
+            env::set_current_dir(&here).unwrap();
         }
 
         // Execute task
         trace(&format!("exec: {} {}", task.task, task.args.join(" ")));
-        exec::exec(exec::ExecRequest {
+        let output = exec::exec(exec::ExecRequest {
             binary_path: full_path,
             args: task.args.clone(),
             env: all_vars.clone(),
+            capture: false,
         }).unwrap();
 
-        // Move back to original path
+        // Final
+        if output.return_code != 0 {
+            trace("Subtask failed. Halting.");
+            process::exit(1);
+        }
     }
 }
 

@@ -1,6 +1,10 @@
+use ::dunce;
 use std::path::PathBuf;
 use std::path::Path;
 use std::fs;
+use logger::get_logger;
+use base_logging::Level;
+use std::error::Error;
 
 /// Treat platforms uniformly regardless of mix and matching formats
 pub fn join<U: AsRef<Path>, V: AsRef<Path>>(a: U, b: V) -> PathBuf {
@@ -21,21 +25,15 @@ pub fn exists<P: AsRef<Path>>(path: P) -> bool {
 
 /// Return the canonical *display* path for a path.
 pub fn display<P: AsRef<Path>>(path: P) -> String {
-    adjust_canonicalization(path)
-}
-
-#[cfg(not(target_os = "windows"))]
-fn adjust_canonicalization<P: AsRef<Path>>(p: P) -> String {
-    p.as_ref().display().to_string()
-}
-
-#[cfg(target_os = "windows")]
-fn adjust_canonicalization<P: AsRef<Path>>(p: P) -> String {
-    const VERBATIM_PREFIX: &str = r#"\\?\"#;
-    let p = p.as_ref().display().to_string();
-    if p.starts_with(VERBATIM_PREFIX) {
-        p[VERBATIM_PREFIX.len()..].to_string()
-    } else {
-        p
-    }
+    return match dunce::canonicalize(path.as_ref()) {
+        Ok(p) => {
+            p.display().to_string()
+        }
+        Err(err) => {
+            let mut logger = get_logger();
+            let rtn = path.as_ref().display().to_string();
+            logger.log(Level::Debug, format!("Failed to normalize path: {:?}: {}", rtn, err.description()));
+            rtn
+        }
+    };
 }

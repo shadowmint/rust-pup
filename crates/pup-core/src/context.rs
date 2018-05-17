@@ -87,7 +87,6 @@ impl PupContext {
     pub fn load_worker(&self, name: &str) -> Result<PupWorker, PupError> {
         let mut logger = get_logger();
         
-        // TODO: Cache results.
         let attempt1 = join(&self.workers, name);
         logger.log(Level::Debug, format!("Checking for: {}", path::display(&attempt1)));
         if exists(&attempt1) {
