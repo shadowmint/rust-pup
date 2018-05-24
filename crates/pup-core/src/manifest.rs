@@ -11,9 +11,11 @@ use std::error::Error;
 use utils::path::exists;
 use utils::path;
 use std::collections::HashMap;
+use logger::get_logger;
+use ::base_logging::Level;
 
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Clone, Deserialize)]
 pub struct PupManifest {
     /// The name of the action in the root/workers/ folder to execute with this action.
     /// The action "foo" maps to the executable "foo" or "foo.exe" as appropriate.
@@ -33,15 +35,38 @@ pub struct PupManifestVersion {
     /// The task foo.bar.z maps to the task in the folder root/tasks/foo/bar/z/
     /// The format should be: path.path.path@version
     #[serde(default)]
-    pub steps: Vec<String>,
+    pub steps: Vec<PupManifestStep>,
 
-    /// The set of extra env variables just for this task.
-    #[serde(default)]
-    pub env: HashMap<String, String>,
-    
     /// The path to the folder for this version
     #[serde(skip)]
     pub path: PathBuf,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PupManifestStep {
+    /// The verison identifier for the target step to run.
+    /// eg. foo.bar.foo#0.0.1
+    pub step: String,
+
+    /// The set of extra env variables just for this step.
+    /// Allow handlebar's templates here, eg. FOO_PATH: "{{SOURCE_PATH}}/foo"
+    /// Inherit the root env configuration as input variables.
+    #[serde(default)]
+    pub environment: HashMap<String, String>,
+
+    /// Allow this step to be skipped if some condition is met; if this value is any 'truish' string value skip the step.
+    /// Allow handlebar's templates here, eg. skip: "{{SKIP_BUILD_STEP}}"
+    /// Inherit the root env configuration as input variables.
+    #[serde(default)]
+    pub skip: String,
+
+    /// Allow this step to be skipped if some condition is not met; if this value is NOT any 'truish' string value, skip the step.
+    /// Allow handlebar's templates here, eg. if: "{{USE_BUILD_STEP}}"
+    /// Inherit the root env configuration as input variables.
+    /// 
+    #[serde(default)]
+    #[serde(rename = "if")]
+    pub if_marker: String,
 }
 
 impl PupManifest {
@@ -69,13 +94,13 @@ impl PupManifest {
 
     /// Check and load all paths in the manifest
     pub fn validate(&mut self, path: &Path) -> Result<(), PupError> {
+        let mut logger = get_logger();
         for version in self.versions.iter_mut() {
-            let version_path = join(path, join("config", &version.version));
+            let mut version_path = join(path, join("versions", &version.version));
             if !exists(&version_path) {
-                return Err(PupError::with_message(
-                    PupErrorType::MissingVersionFolder,
-                    &format!("Missing version directory: {}", path::display(&version_path)),
-                ));
+                // If no versions folder exists, just use the root folder and log a warning.
+                logger.log(Level::Debug, format!("No versions folder for: {}, using root: {}", version.version, path::display(path)));
+                version_path = PathBuf::from(path);
             }
             version.path = version_path;
         }

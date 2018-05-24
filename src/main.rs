@@ -9,7 +9,8 @@ use std::process;
 use std::error::Error;
 
 fn print_usage(program: &str, opts: Options) {
-    let brief = format!("Usage: {} FILE [options]", program);
+    let brief = format!("Usage: {} FILE [options]\n     : If FILE is ommitted, 'manifest.yml' will be used.", program);
+    
     print!("{}", opts.usage(&brief));
 }
 
@@ -29,9 +30,8 @@ fn main() {
     let mut opts = Options::new();
     opts.optopt("t", "task", "the id of the task to run or examine", "TASK");
     opts.optflag("h", "help", "print this help menu");
-    opts.optflag("a", "all", "list all versions");
-    opts.optflag("d", "dryrun", "dry-run execute the task");
-    opts.optflag("p", "plan", "show the execution plan for the task");
+    opts.optflag("d", "dryrun", "dry-run the task, showing debug information");
+    opts.optflag("e", "execute", "execute the task");
     opts.optflag("v", "verbose", "use verbose logging");
 
     let matches = match opts.parse(&args[1..]) {
@@ -45,8 +45,8 @@ fn main() {
     let process_manifest = if !matches.free.is_empty() {
         matches.free[0].clone()
     } else {
-        print_usage(&program, opts);
-        process::exit(1);
+        // Use default manifest
+        "manifest.yml".to_string()
     };
 
     if matches.opt_present("h") {
@@ -55,20 +55,42 @@ fn main() {
     }
 
     if matches.opt_present("v") {
+        println!("Using debug!");
         pup_enable_debug()
     }
 
     let mut args: HashMap<PupArg, String> = HashMap::new();
     args.insert(PupArg::ProcessManifestPath, process_manifest);
 
-    // Plan
-    if matches.opt_present("p") {
-        if !matches.opt_present("t") {
-            err_bad_usage("--plan requires a task id with --task", &program, opts);
-            process::exit(1);
+
+    // Execute
+    if matches.opt_present("t") {
+        args.insert(PupArg::TaskId, matches.opt_str("t").unwrap());
+
+        // Dryrun
+        if matches.opt_present("d") {
+            args.insert(PupArg::DryRun, "1".to_string());
+            match pup_main(PupTask::RunTask, args) {
+                Ok(_) => process::exit(0),
+                Err(err) => {
+                    err_failure(err.description());
+                    process::exit(1)
+                }
+            };
         }
 
-        args.insert(PupArg::TaskId, matches.opt_str("t").unwrap());
+        // Actually run
+        if matches.opt_present("e") {
+            match pup_main(PupTask::RunTask, args) {
+                Ok(_) => process::exit(0),
+                Err(err) => {
+                    err_failure(err.description());
+                    process::exit(1)
+                }
+            };
+        }
+
+        // Plan is the default fallback
         match pup_main(PupTask::ShowExecutionPlan, args) {
             Ok(_) => process::exit(0),
             Err(err) => {
@@ -78,40 +100,8 @@ fn main() {
         };
     }
 
-    // Dryrun
-    if matches.opt_present("d") {
-        if !matches.opt_present("t") {
-            err_bad_usage("--dryrun requires a task id with --task", &program, opts);
-            process::exit(1);
-        }
-
-        args.insert(PupArg::DryRun, "1".to_string());
-        args.insert(PupArg::TaskId, matches.opt_str("t").unwrap());
-        match pup_main(PupTask::RunTask, args) {
-            Ok(_) => process::exit(0),
-            Err(err) => {
-                err_failure(err.description());
-                process::exit(1)
-            }
-        };
-    }
-
-    // Execute
-    if matches.opt_present("t") {
-        args.insert(PupArg::TaskId, matches.opt_str("t").unwrap());
-        match pup_main(PupTask::RunTask, args) {
-            Ok(_) => process::exit(0),
-            Err(err) => {
-                err_failure(err.description());
-                process::exit(1)
-            }
-        };
-    }
-
     // Fallback; list tasks
-    if matches.opt_present("a") {
-        args.insert(PupArg::ListTaskVersions, "1".to_string());
-    }
+    args.insert(PupArg::ListTaskVersions, "1".to_string());
     match pup_main(PupTask::ListAvailableTasks, args) {
         Ok(_) => process::exit(0),
         Err(err) => {

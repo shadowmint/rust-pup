@@ -33,6 +33,7 @@ pub fn pup_main(task: PupTask, args: HashMap<PupArg, String>) -> Result<(), PupE
                 return Err(is_valid.err().unwrap());
             }
             let mut logger = ::pup_core::logger::get_logger();
+            logger.log(Level::Debug, format!("Executing task: {:?}", task));
             return runner.run(&mut logger);
         }
         None => Err(PupError::with_message(

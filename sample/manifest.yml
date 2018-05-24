@@ -1,0 +1,11 @@
+workers_path: workers
+tasks_path: tasks
+tasks:
+  - tests.builds.deployment
+  - tests.builds.bad
+environment:
+  foo: bar
+  bar: foobar
+  userthing: "{{EXT_USERNAME}} -> {{EXT_PASSWORD}}"
+  SKIP_STEP: true
+  IF_STEP: false

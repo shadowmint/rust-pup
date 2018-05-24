@@ -1,11 +1,32 @@
 action: pup-tasks
 versions:
-  -
-    version: 0.0.1
+  - version: 0.0.1
     steps:
-      - tests.actions.setVersion#0.0.2
-  -
-    version: 0.0.2
+      - step: tests.actions.setVersion#0.0.2
+  
+  - version: 0.0.2
     steps:
-      - tests.actions.setVersion#0.0.2
-      - tests.actions.runBuild
+      - step: tests.actions.setVersion#0.0.2
+      - step: tests.actions.runBuild
+
+  - version: 0.0.2-skip
+    steps:
+      - step: tests.actions.setVersion#0.0.2
+      
+      # Pick between two child versions based on SKIP_STEP in global config
+      - step: tests.actions.runBuild#1.0.0
+        skip: "{{SKIP_STEP}}"
+        
+      - step: tests.actions.runBuild#2.0.0
+        if: "{{SKIP_STEP}}"
+
+  - version: 0.0.2-if
+    steps:
+      - step: tests.actions.setVersion#0.0.2
+      
+      # Pick between two child versions based on SKIP_STEP in global config
+      - step: tests.actions.runBuild#1.0.0
+        skip: "{{IF_STEP}}"
+        
+      - step: tests.actions.runBuild#2.0.0
+        if: "{{IF_STEP}}"     

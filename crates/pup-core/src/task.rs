@@ -1,17 +1,15 @@
 use ::context::PupContext;
 use ::manifest::PupManifest;
-use ::errors::{PupError};
+use ::errors::PupError;
 use ::utils::path::join;
 use std::path::Path;
 use std::path::PathBuf;
 
 /// A single folder with an action in it is a task.
+#[derive(Clone)]
 pub struct PupTask {
     /// The original name of this task
     pub name: String,
-
-    /// The context folder
-    //context: PupContext,
 
     /// The manifest data
     pub manifest: PupManifest,
@@ -28,7 +26,6 @@ impl PupTask {
             Ok(manifest) => {
                 let task = PupTask {
                     name: String::from(name),
-                   // context,
                     manifest,
                     path: PathBuf::from(manifest_path),
                 };
@@ -44,17 +41,14 @@ impl PupTask {
 #[cfg(test)]
 mod tests {
     use super::PupTask;
-    use ::context::PupContext;
-    use ::testing::test_context_fixture;
-    use std::env::current_dir;
-    use std::path::PathBuf;
-    use std::path::Path;
-    use utils::path::join;
+    use ::testing::test_fixture;
 
     #[test]
     fn load_simple_task() {
-        let context = test_context_fixture();
-        let task = PupTask::new(context, "tests.actions.setVersion", "tests/actions/setVersion").unwrap();
+        let process = test_fixture();
+        let task = PupTask::new(process.context.clone(),
+                                "tests.actions.setVersion",
+                                "tests/actions/setVersion").unwrap();
         assert_eq!(task.manifest.versions.len(), 2);
     }
 }

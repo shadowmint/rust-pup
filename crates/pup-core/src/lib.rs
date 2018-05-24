@@ -8,6 +8,7 @@ extern crate dunce;
 extern crate serde_yaml;
 extern crate base_logging;
 extern crate time;
+extern crate handlebars;
 
 mod context;
 mod manifest;

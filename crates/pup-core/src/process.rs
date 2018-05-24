@@ -13,16 +13,21 @@ use std::collections::HashMap;
 use task::PupTask;
 use manifest::PupManifestVersion;
 use runner::PupRunner;
+use runner::env::EnvHelper;
 
 #[derive(Debug)]
 pub struct PupProcess {
-    pub manifest: PupProcessManifest,
-
     /// The root path to the process sequence
     pub path: PathBuf,
 
     /// The internal context instance
-    _context: Option<PupContext>,
+    pub context: PupContext,
+
+    /// The internal manifest instance 
+    pub manifest: PupProcessManifest,
+
+    /// The ambient external environment overrides, if any
+    pub environment_overrides: HashMap<String, String>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -69,36 +74,53 @@ impl PupProcessManifest {
 }
 
 impl PupProcess {
-    pub fn load_from<P: AsRef<Path>>(path: P) -> Result<PupProcess, PupError> {
+    /// Create a process from a path and (optionally) a set of external environmental overrides.
+    pub fn load_from<P: AsRef<Path>>(path: P, env: Option<HashMap<String, String>>) -> Result<PupProcess, PupError> {
+        // Load manifest
         let manifest = PupProcessManifest::try_from(path.as_ref())?;
-        Ok(PupProcess {
-            manifest,
+
+        // Create context
+        let process_path = path.as_ref().parent().unwrap();
+        let mut context = PupContext::new(
+            &join(&process_path, &manifest.tasks_path),
+            &join(&process_path, &manifest.workers_path));
+
+        // Render any env variables in the manifest
+        PupProcess::render_context_env(&manifest, &mut context, env)?;
+
+        return Ok(PupProcess {
             path: PathBuf::from(path.as_ref()),
-            _context: None,
-        })
+            manifest,
+            context,
+            environment_overrides: HashMap::new(),
+        });
     }
 
-    fn process_path(&self) -> &Path {
-        return self.path.parent().unwrap();
-    }
+    fn render_context_env(manifest: &PupProcessManifest, context: &mut PupContext, overrides: Option<HashMap<String, String>>) -> Result<(), PupError> {
+        let mut env_helper = EnvHelper::new();
+        let mut ambient_params = env_helper.ambient_state().clone();
 
-    pub fn context(&mut self) -> &PupContext {
-        if self._context.is_none() {
-            let mut context = PupContext::new(
-                &join(&self.process_path(), &self.manifest.tasks_path),
-                &join(&self.process_path(), &self.manifest.workers_path));
-            context.set_environment(&self.manifest.environment);
-            self._context = Some(context);
-        }
-        return self._context.as_ref().unwrap();
+        // Blat existing values if any override
+        match overrides {
+            Some(o) => {
+                for key in o.keys() {
+                    ambient_params.insert(key.to_string(), o[key].to_string());
+                }
+            }
+            None => {}
+        };
+
+        let env = env_helper.render_existing_keys_from_parent_scope(&manifest.environment, &ambient_params)?;
+        context.set_root_environment(&env);
+        Ok(())
     }
 
     pub fn task(&mut self, task: &str) -> Result<(PupTask, PupManifestVersion), PupError> {
-        return self.context().load_task(task);
+        return self.context.load_task(task);
     }
 
     pub fn runner(&mut self, task: &str) -> Result<PupRunner, PupError> {
-        let mut runner = PupRunner::new(self.context());
+        let mut runner = PupRunner::new(&self.context);
         let _ = runner.add(task)?;
         return Ok(runner);
     }
@@ -108,20 +130,36 @@ impl PupProcess {
 mod tests {
     use super::PupProcess;
     use ::testing::test_context_process_path;
+    use testing::test_fixture;
 
     #[test]
     fn test_load_from_folder() {
         let sample_process = test_context_process_path();
-        let mut process = PupProcess::load_from(sample_process).unwrap();
-        assert_eq!(process.manifest.environment.len(), 2);
+        let process = PupProcess::load_from(sample_process, None).unwrap();
         assert_eq!(process.manifest.environment["foo"], "bar");
-        let context = process.context();
+        assert_eq!(process.manifest.environment["userthing"], "{{EXT_USERNAME}} -> {{EXT_PASSWORD}}");
+        let _ = process.context;
+    }
+
+    #[test]
+    fn test_load_from_test_scaffold() {
+        let mut process = test_fixture();
+
+        // Raw values from manifest
+        assert_eq!(process.manifest.environment["foo"], "bar");
+        assert_eq!(process.manifest.environment["userthing"], "{{EXT_USERNAME}} -> {{EXT_PASSWORD}}");
+
+        // Rendered values
+        let runner = process.runner("tests.actions.nested").unwrap();
+        let action = runner.tasks().children[0].external.take().unwrap();
+        assert_eq!(action.env["foo"], "bar");
+        assert_eq!(action.env["userthing"], "foouser -> foopass");
     }
 
     #[test]
     fn test_root_level_tasks() {
         let sample_process = test_context_process_path();
-        let process = PupProcess::load_from(sample_process).unwrap();
+        let process = PupProcess::load_from(sample_process, None).unwrap();
         assert_eq!(process.manifest.tasks.len(), 2);
     }
 }

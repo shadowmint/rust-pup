@@ -1,0 +1,18 @@
+[package]
+name = "pup-worker-patch"
+version = "0.1.0"
+authors = [""]
+
+[dependencies]
+handlebars = "1.0.0-beta.2"
+serde = "1.0"
+serde_yaml = "0.7"
+serde_derive = "1.0"
+getopts = "0.2.17"
+regex = "1.0"
+
+[dependencies.pup-worker]
+path = "../../crates/pup-worker"
+
+[dependencies.base-logging]
+path = "../../crates/base-logging"

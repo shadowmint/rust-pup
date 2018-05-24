@@ -15,7 +15,7 @@ use std::fs::canonicalize;
 #[derive(Clone, Debug)]
 pub struct PupContext {
     /// The config file passed to each worker.
-    pub env: Option<HashMap<String, String>>,
+    pub env: HashMap<String, String>,
 
     /// The root folder for the set of workers which are available.
     pub workers: PathBuf,
@@ -29,15 +29,17 @@ impl PupContext {
     /// root folder, the workers root folder and the config file.
     pub fn new(tasks: &Path, workers: &Path) -> PupContext {
         return PupContext {
-            env: None,
+            env: HashMap::new(),
             tasks: canonicalize(PathBuf::from(tasks)).unwrap(),
             workers: canonicalize(PathBuf::from(workers)).unwrap(),
         };
     }
 
     /// Import an entire environment settings map
-    pub fn set_environment(&mut self, env: &HashMap<String, String>) {
-        self.env = Some(env.clone());
+    pub fn set_root_environment(&mut self, env: &HashMap<String, String>) {
+        for key in env.keys() {
+            self.env.insert(key.to_string(), env[key].to_string());
+        }
     }
 
     /// Load a context by 'name string' in the format foo.bar.foobar#version
@@ -86,7 +88,7 @@ impl PupContext {
     /// Find a worker by the name 'name' in the workers folder, and return a PupWorker for it.
     pub fn load_worker(&self, name: &str) -> Result<PupWorker, PupError> {
         let mut logger = get_logger();
-        
+
         let attempt1 = join(&self.workers, name);
         logger.log(Level::Debug, format!("Checking for: {}", path::display(&attempt1)));
         if exists(&attempt1) {
@@ -94,10 +96,10 @@ impl PupContext {
             return Ok(PupWorker {
                 path: attempt1,
                 name: String::from(name),
-                env: self.env.as_ref().map_or_else(|| HashMap::new(), |v| v.clone()),
+                env: self.env.clone(),
             });
         }
-        
+
         let attempt2 = join(&self.workers, format!("{}.exe", name));
         logger.log(Level::Debug, format!("Checking for: {}", path::display(&attempt2)));
         if exists(&attempt2) {
@@ -105,7 +107,7 @@ impl PupContext {
             return Ok(PupWorker {
                 path: attempt2,
                 name: String::from(name),
-                env: self.env.as_ref().map_or_else(|| HashMap::new(), |v| v.clone()),
+                env: self.env.clone(),
             });
         }
 
@@ -118,22 +120,20 @@ impl PupContext {
 
 #[cfg(test)]
 mod tests {
-    use utils::path::join;
-    use std::path::PathBuf;
-    use ::testing::test_context_fixture;
+    use ::testing::test_fixture;
 
     #[test]
     fn load_simple_task() {
-        let context = test_context_fixture();
-        let (task, version) = context.load_task("tests.actions.setVersion#0.0.2").unwrap();
+        let process = test_fixture();
+        let (task, version) = process.context.load_task("tests.actions.setVersion#0.0.2").unwrap();
         assert_eq!(task.manifest.versions.len(), 2);
         assert_eq!(version.version, "0.0.2");
     }
 
     #[test]
     fn fails_to_load_missing_version() {
-        let context = test_context_fixture();
-        let task = context.load_task("tests.actions.setVersion#1.0.0");
+        let process = test_fixture();
+        let task = process.context.load_task("tests.actions.setVersion#1.0.0");
         assert!(task.is_err());
     }
 }

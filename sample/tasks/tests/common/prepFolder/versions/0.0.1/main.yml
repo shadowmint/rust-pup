@@ -1,0 +1,5 @@
+tasks:
+  - info: Some task
+    task: foo
+    args: 
+      - "{{FOO}}/bar"

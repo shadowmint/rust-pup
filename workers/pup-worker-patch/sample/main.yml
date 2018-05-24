@@ -1,0 +1,45 @@
+tasks:
+  - input: foo.txt
+    output: output/foo.txt
+    mode: Regex
+    patch:
+      - pattern: .*(five)([0-9]+)?.*
+        partial: true 
+        values: 
+          - FIVE
+          - 99
+          
+  - input: foo.txt
+    output: output/foo2.txt
+    mode: Regex
+    patch:
+      - pattern: .*(five)[^0-9]*([0-9]+)?.*
+        values: 
+          - FIVE
+          - 99
+      - pattern: (AAAA)
+        values: 
+          - BBBB
+
+  - input: bar.txt
+    output: output/bar.txt
+    mode: Regex
+    patch:
+      - pattern: ([a-zA-Z]+)?(:[0-9]+)?(:[a-zA-Z]+)?
+        partial: true
+        values: 
+          - FIRST
+          - :SECOND
+          - :THRID
+
+  - input: output/bar.txt
+    output: output/bar.txt.tmp
+    mode: Regex
+    patch:
+      - pattern: (FIRST)
+        values: 
+          - ___FIRST___
+                    
+  - input: output/bar.txt.tmp
+    output: output/bar.txt
+    mode: Copy          

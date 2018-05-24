@@ -5,5 +5,5 @@ versions:
   -
     version: 0.0.2
     steps:
-      - tests.actions.prepareFolder
+      - step: tests.actions.prepareFolder
       

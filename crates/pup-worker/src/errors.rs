@@ -1,56 +1,55 @@
 use std::error::Error;
 use std::fmt;
-use std::io;
-use ::serde_yaml;
 
-#[derive(Debug, Copy, Clone)]
-pub enum PupErrorType {
+#[derive(Debug, Copy, Clone, PartialEq)]
+pub enum PupWorkerErrorType {
     InnerError,
-    MissingVersionFolder,
-    MissingVersion,
-    MissingWorker,
-    MissingManifest,
-    MissingProcessManifest,
-    RunnerAlreadyCompleted,
-    WorkerFailed,
     InvalidRequest,
-    MissingArgument,
+    IOError,
     FailedToSpawnWorker,
+    SkipTask,
 }
 
 #[derive(Debug)]
-pub struct PupError {
+pub struct PupWorkerError {
     /// The code that identifies what sort of error this is?
-    pub error_type: PupErrorType,
+    pub error_type: PupWorkerErrorType,
 
     /// A human readable error message
     pub error_detail: String,
 
-    /// The inner error if any
-    pub error_inner: Option<Box<Error + Send + 'static>>,
+    /// The inner error detail if any
+    pub error_inner: Option<String>,
 }
 
-impl PupError {
-    pub fn with_message(error_type: PupErrorType, error_detail: &str) -> Self {
-        return PupError {
+impl PupWorkerError {
+    pub fn with_message(error_type: PupWorkerErrorType, error_detail: &str) -> Self {
+        return PupWorkerError {
             error_type,
             error_detail: format!("Error: {:?}: {}", error_type, error_detail),
             error_inner: None,
         };
     }
 
-    pub fn with_error<E: Error + Send + 'static>(error_type: PupErrorType, error_detail: &str, inner_error: E) -> Self {
-        return PupError {
+    pub fn with_error<E: Error>(error_type: PupWorkerErrorType, error_detail: &str, inner_error: E) -> Self {
+        return PupWorkerError {
             error_type,
             error_detail: format!("Error: {:?}: {}", error_type, error_detail),
-            error_inner: Some(Box::new(inner_error) as Box<Error + Send + 'static>),
+            error_inner: Some(inner_error.description().to_string()),
         };
+    }
+
+    pub fn wrap<U, V>(result: Result<U, V>) -> Result<U, PupWorkerError> where V: Error {
+        match result {
+            Ok(u) => Ok(u),
+            Err(v) => Err(PupWorkerError::with_error(PupWorkerErrorType::InnerError, "Uncaught error", v))
+        }
     }
 }
 
-impl From<PupErrorType> for PupError {
-    fn from(error_type: PupErrorType) -> Self {
-        return PupError {
+impl From<PupWorkerErrorType> for PupWorkerError {
+    fn from(error_type: PupWorkerErrorType) -> Self {
+        return PupWorkerError {
             error_type,
             error_detail: format!("Error: {:?}", error_type),
             error_inner: None,
@@ -58,35 +57,13 @@ impl From<PupErrorType> for PupError {
     }
 }
 
-impl From<io::Error> for PupError {
-    fn from(err: io::Error) -> Self {
-        return PupError::from(Box::new(err) as Box<Error + Send + 'static>);
-    }
-}
-
-impl From<serde_yaml::Error> for PupError {
-    fn from(err: serde_yaml::Error) -> Self {
-        return PupError::from(Box::new(err) as Box<Error + Send + 'static>);
-    }
-}
-
-impl From<Box<Error + Send + 'static>> for PupError {
-    fn from(err: Box<Error + Send + 'static>) -> PupError {
-        return PupError {
-            error_type: PupErrorType::InnerError,
-            error_detail: String::from(err.description()),
-            error_inner: Some(err),
-        };
-    }
-}
-
-impl Error for PupError {
+impl Error for PupWorkerError {
     fn description(&self) -> &str {
         return &self.error_detail;
     }
 }
 
-impl fmt::Display for PupError {
+impl fmt::Display for PupWorkerError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", self.description())
     }

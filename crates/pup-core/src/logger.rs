@@ -15,21 +15,18 @@ lazy_static! {
 
 impl LogFormatter for PupFormatter {
     fn log_format(&self, level: Level, timestamp: Tm, message: Option<&str>, properties: Option<HashMap<&str, &str>>) -> String {
-        if level <= *LEVEL.lock().unwrap() {
-            if level == Level::Debug {
-                let timestring = match time::strftime("%b %d %H:%M:%S", &timestamp) {
-                    Ok(i) => i,
-                    Err(_) => String::from("")
-                };
-                return format!("{} {:?} - {}", timestring, level, self.combine(message, properties));
-            } else {
-                return match message {
-                    Some(m) => String::from(m),
-                    None => String::new()
-                };
-            }
-        };
-        return String::new();
+        if level == Level::Debug {
+            let timestring = match time::strftime("%b %d %H:%M:%S", &timestamp) {
+                Ok(i) => i,
+                Err(_) => String::from("")
+            };
+            return format!("{} {:?} - {}", timestring, level, self.combine(message, properties));
+        } else {
+            return match message {
+                Some(m) => String::from(m),
+                None => String::new()
+            };
+        }
     }
 }
 
@@ -55,7 +52,15 @@ impl PupFormatter {
 }
 
 pub fn get_logger() -> Logger {
-    let logger = Logger::new().with_format(PupFormatter {}).with(ConsoleLogger::new());
+    let mut logger = Logger::new().with_format(PupFormatter {}).with(ConsoleLogger::new());
+    match LEVEL.lock() {
+        Ok(l) => {
+            logger = logger.with_level(*l);
+        }
+        Err(e) => {
+            println!("Failed to get log level information: {:?}", e);
+        }
+    }
     return logger;
 }
 

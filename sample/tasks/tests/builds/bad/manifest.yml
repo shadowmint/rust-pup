@@ -3,5 +3,5 @@ versions:
   -
     version: 1.0.0
     steps:
-      - tests.actions.setVersion#0.0.1
-      - tests.actions.missing
+      - step: tests.actions.setVersion#0.0.1
+      - step: tests.actions.missing

@@ -45,7 +45,7 @@ impl PupTaskRunner for TaskRunnerShowPlan {
         validation::is_ok(self)?;
 
         logger.log(Level::Debug, format!("Reading: {:?}", path::display(&self.path)));
-        let mut process = PupProcess::load_from(&self.path)?;
+        let mut process = PupProcess::load_from(&self.path, None)?;
 
         logger.log(Level::Debug, format!("Opening: {}", self.task));
         match process.runner(&self.task) {

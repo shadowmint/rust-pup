@@ -3,5 +3,5 @@ versions:
   -
     version: 1.0.0
     steps:
-      - tests.actions.prepareFolder.tasks.deleteOldFiles
-      - tests.actions.prepareFolder.tasks.updateFromGit
+      - step: tests.actions.prepareFolder.tasks.deleteOldFiles
+      - step: tests.actions.prepareFolder.tasks.updateFromGit

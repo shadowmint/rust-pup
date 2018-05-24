@@ -44,7 +44,7 @@ impl PupTaskRunner for TaskRunnerListAvailable {
         validation::is_ok(self)?;
 
         logger.log(Level::Debug, format!("Reading: {}", path::display(&self.path)));
-        let mut process = PupProcess::load_from(&self.path)?;
+        let mut process = PupProcess::load_from(&self.path, None)?;
 
         logger.log(Level::Debug, format!("Found {} tasks", &process.manifest.tasks.len()));
         for task in &process.manifest.tasks.clone() {

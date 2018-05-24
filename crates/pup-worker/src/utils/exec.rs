@@ -1,11 +1,9 @@
 use std::process::{Command, Stdio};
-use ::errors::{PupError, PupErrorType};
+use ::errors::{PupWorkerError, PupWorkerErrorType};
 use std::path::PathBuf;
 use std::collections::HashMap;
 use std::error::Error;
 use utils::path;
-use std::process::Child;
-use std::io::Read;
 
 pub struct ExecRequest {
     /// The set of environment variables to add
@@ -30,14 +28,14 @@ pub struct ExecResult {
     pub stdout: Option<String>,
 }
 
-pub fn exec(request: ExecRequest) -> Result<ExecResult, PupError> {
+pub fn exec(request: ExecRequest) -> Result<ExecResult, PupWorkerError> {
     match request.capture {
         true => exec_capture(request),
         false => exec_stream(request)
     }
 }
 
-fn exec_stream(request: ExecRequest) -> Result<ExecResult, PupError> {
+fn exec_stream(request: ExecRequest) -> Result<ExecResult, PupWorkerError> {
     match Command::new(&request.binary_path)
         .args(&request.args)
         .stdout(Stdio::inherit())
@@ -45,27 +43,27 @@ fn exec_stream(request: ExecRequest) -> Result<ExecResult, PupError> {
         .envs(&request.env)
         .spawn() {
         Ok(mut cmd) => {
-            let return_code = cmd.wait()?;
+            let return_code = PupWorkerError::wrap(cmd.wait())?;
             return Ok(ExecResult {
                 return_code: return_code.code().unwrap(),
                 stdout: None,
             });
         }
         Err(err) => {
-            return Err(PupError::with_error(
-                PupErrorType::FailedToSpawnWorker,
+            return Err(PupWorkerError::with_error(
+                PupWorkerErrorType::FailedToSpawnWorker,
                 &format!("Unable to spawn worker: {}: {}", path::display(&request.binary_path), err.description()),
                 err));
         }
     };
 }
 
-fn exec_capture(request: ExecRequest) -> Result<ExecResult, PupError> {
+fn exec_capture(request: ExecRequest) -> Result<ExecResult, PupWorkerError> {
     match Command::new(&request.binary_path)
         .args(&request.args)
         .envs(&request.env)
         .output() { 
-        Ok(mut output) => {
+        Ok(output) => {
             let out = String::from_utf8_lossy(&output.stdout);
             let return_code = output.status;
             return Ok(ExecResult {
@@ -74,8 +72,8 @@ fn exec_capture(request: ExecRequest) -> Result<ExecResult, PupError> {
             });
         }
         Err(err) => {
-            return Err(PupError::with_error(
-                PupErrorType::FailedToSpawnWorker,
+            return Err(PupWorkerError::with_error(
+                PupWorkerErrorType::FailedToSpawnWorker,
                 &format!("Unable to spawn worker: {}: {}", path::display(&request.binary_path), err.description()),
                 err));
         }

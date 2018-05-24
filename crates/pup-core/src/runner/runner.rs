@@ -7,6 +7,7 @@ use logger::get_logger;
 use runner::action::PupActionOptions;
 
 /// A set of tasks to be run
+#[derive(Clone)]
 pub struct PupRunner {
     /// The context for everything
     context: PupContext,
@@ -24,12 +25,12 @@ impl PupRunner {
         };
     }
 
-    /// Add the entire DAG for a runner from a base task
+    /// Add the entire DAG for a runner from a base task.
     /// name should be a standard format name, eg. foo.bar.foobar#1.0.0
     /// or, to just use whatever the latest version is, foo.bar.foobar
     pub fn add(&mut self, name: &str) -> Result<(), PupError> {
         let mut action = PupAction::new();
-        action.load(&self.context, name)?;
+        action.load(&self.context, name, &self.context.env)?;
         self.root.children.push(action);
         return Ok(());
     }
@@ -48,18 +49,25 @@ impl PupRunner {
 
         return Ok(());
     }
+
+    /// Return a copy of the internal action; for cloning, testing, etc.
+    pub fn tasks(&self) -> PupAction {
+        return self.root.clone();
+    }
 }
 
 impl fmt::Debug for PupRunner {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        for child in self.root.children.iter() {
-            debug_print(f, child, 1);
+        let count = self.root.children.len();
+        for i in 0..count {
+            let child = &self.root.children[i];
+            debug_print(f, child, 1, i == count - 1);
         }
         write!(f, "")
     }
 }
 
-fn debug_print(f: &mut fmt::Formatter, action: &PupAction, offset: usize) {
+fn debug_print(f: &mut fmt::Formatter, action: &PupAction, offset: usize, is_last: bool) {
     let ext = action.external.as_ref().unwrap();
 
     // Name
@@ -68,42 +76,43 @@ fn debug_print(f: &mut fmt::Formatter, action: &PupAction, offset: usize) {
     let _ = write!(f, " {} #{}", ext.task.name, ext.version.version);
 
     // Action
-    let _ = write!(f, " ({} -> {})\n", ext.worker.name, path::display(&ext.version.path));
+    let _ = write!(f, " ({} -> {})", ext.worker.name, path::display(&ext.version.path));
+    if !is_last || action.children.len() > 0 {
+        let _ = write!(f, "\n");
+    }
 
-    for child in action.children.iter() {
-        debug_print(f, child, offset + 1);
+    let count = action.children.len();
+    for i in 0..count {
+        let child = &action.children[i];
+        debug_print(f, child, offset + 1, is_last && i == count - 1);
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use ::context::PupContext;
     use super::PupRunner;
-    use std::env::current_dir;
-    use utils::path::join;
-    use std::path::PathBuf;
-    use ::testing::test_context_fixture;
+    use ::testing::test_fixture;
     use runner::action::PupActionOptions;
 
     #[test]
     fn load_runner_from_working_task() {
-        let context = test_context_fixture();
-        let mut runner = PupRunner::new(&context);
+        let process = test_fixture();
+        let mut runner = PupRunner::new(&process.context);
         assert!(runner.add("tests.builds.deployment").is_ok());
         println!("{:?}", runner);
     }
 
     #[test]
     fn load_runner_from_invalid_task() {
-        let context = test_context_fixture();
-        let mut runner = PupRunner::new(&context);
+        let process = test_fixture();
+        let mut runner = PupRunner::new(&process.context);
         assert!(runner.add("tests.builds.bad").is_err());
     }
 
     #[test]
     fn run_runner_in_dry_run_mode() {
-        let context = test_context_fixture();
-        let mut runner = PupRunner::new(&context);
+        let process = test_fixture();
+        let mut runner = PupRunner::new(&process.context);
         assert!(runner.add("tests.builds.deployment").is_ok());
         assert!(runner.run(PupActionOptions {
             dry_run: true,
@@ -113,12 +122,29 @@ mod tests {
 
     #[test]
     fn run_runner_fails_with_invalid_workers_in_real_mode() {
-        let context = test_context_fixture();
-        let mut runner = PupRunner::new(&context);
+        let process = test_fixture();
+        let mut runner = PupRunner::new(&process.context);
         assert!(runner.add("tests.builds.deployment").is_ok());
         assert!(runner.run(PupActionOptions {
             dry_run: false,
             args: vec!("config.json").iter().map(|x| String::from(*x)).collect(),
         }).is_err());
+    }
+
+    #[test]
+    fn test_rendered_step_env_values() {
+        let process = test_fixture();
+        let mut runner = PupRunner::new(&process.context);
+        assert!(runner.add("tests.actions.nested").is_ok());
+
+        let parent_task = &mut runner.root.children[0].children[0];
+        assert!(parent_task.external.is_some());
+
+        let external = parent_task.external.take().unwrap();
+        assert_eq!(external.task.name, "tests.common.prepFolder");
+        assert_eq!(external.env["foo"], "bar");
+        assert_eq!(external.env["bar"], "foobar");
+        assert_eq!(external.env["PREP_FOLDER_PATH"], "bar/foobar/nested");
+        assert_eq!(external.env["PREP_FOLDER_RULE"], "clean");
     }
 }

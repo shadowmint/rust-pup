@@ -2,9 +2,6 @@ use ::dunce;
 use std::path::PathBuf;
 use std::path::Path;
 use std::fs;
-use logger::get_logger;
-use base_logging::Level;
-use std::error::Error;
 
 /// Treat platforms uniformly regardless of mix and matching formats
 pub fn join<U: AsRef<Path>, V: AsRef<Path>>(a: U, b: V) -> PathBuf {
@@ -29,11 +26,8 @@ pub fn display<P: AsRef<Path>>(path: P) -> String {
         Ok(p) => {
             p.display().to_string()
         }
-        Err(err) => {
-            let mut logger = get_logger();
-            let rtn = path.as_ref().display().to_string();
-            logger.log(Level::Debug, format!("Failed to normalize path: {:?}: {}", rtn, err.description()));
-            rtn
+        Err(_) => {
+            path.as_ref().display().to_string()
         }
     };
 }

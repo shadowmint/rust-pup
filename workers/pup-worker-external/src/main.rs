@@ -51,7 +51,8 @@ fn main_() {
         }
 
         // Find binary to run
-        let full_path = find_binary_from_task(&task.task);
+        let rendered_exec_path = reg.render_template(&task.task, &all_vars).unwrap();
+        let full_path = find_binary_from_task(&rendered_exec_path);
 
         // Render arguments
         let raw = task.args.clone();
@@ -70,7 +71,7 @@ fn main_() {
         }
 
         // Execute task
-        trace(&format!("exec: {} {}", task.task, task.args.join(" ")));
+        trace(&format!("exec: {} {}", rendered_exec_path, task.args.join(" ")));
         let output = exec::exec(exec::ExecRequest {
             binary_path: full_path,
             args: task.args.clone(),

@@ -2,6 +2,7 @@ use std::path::PathBuf;
 use std::collections::HashMap;
 
 /// An external binary command to execute for an action.
+#[derive(Clone)]
 pub struct PupWorker {
     /// Full path to the executable
     pub path: PathBuf,
@@ -14,4 +15,5 @@ pub struct PupWorker {
 }
 
 /// The result of executing a PupWorker
+#[derive(Clone)]
 pub struct PupWorkerResult {}

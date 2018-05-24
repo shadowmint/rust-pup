@@ -1,21 +1,19 @@
-use ::context::PupContext;
 use utils::path::join;
 use std::path::PathBuf;
 use std::collections::HashMap;
 use std::env::current_exe;
+use PupProcess;
 
-pub fn test_context_fixture() -> PupContext {
-    let root = test_context_folder();
-    let mut context = PupContext::new(
-        &join(&root, "tasks"),
-        &join(&root, "workers"));
+pub fn test_fixture() -> PupProcess {
+    let root = test_context_process_path();
 
-    let mut fake_env: HashMap<String, String> = HashMap::new();
-    fake_env.insert(String::from("foo"), String::from("bar"));
-    fake_env.insert(String::from("config"), String::from("test"));
+    // Fake some external environment variables
+    let mut overrides: HashMap<String, String> = HashMap::new();
+    overrides.insert("EXT_USERNAME".to_string(), "foouser".to_string());
+    overrides.insert("EXT_PASSWORD".to_string(), "foopass".to_string());
 
-    context.set_environment(&fake_env);
-    return context;
+    let process = PupProcess::load_from(root, Some(overrides)).unwrap();
+    return process;
 }
 
 pub fn test_context_process_path() -> PathBuf {

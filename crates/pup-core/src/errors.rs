@@ -2,15 +2,16 @@ use std::error::Error;
 use std::fmt;
 use std::io;
 use ::serde_yaml;
+use ::handlebars;
 
 #[derive(Debug, Copy, Clone)]
 pub enum PupErrorType {
     InnerError,
-    MissingVersionFolder,
     MissingVersion,
     MissingWorker,
     MissingManifest,
     MissingProcessManifest,
+    MissingWorkFolder,
     RunnerAlreadyCompleted,
     WorkerFailed,
     InvalidRequest,
@@ -55,6 +56,12 @@ impl From<PupErrorType> for PupError {
             error_detail: format!("{:?}", error_type),
             error_inner: None,
         };
+    }
+}
+
+impl From<handlebars::TemplateRenderError> for PupError {
+    fn from(err: handlebars::TemplateRenderError) -> Self {
+        return PupError::from(Box::new(err) as Box<Error + Send + 'static>);
     }
 }
 

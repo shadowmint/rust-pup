@@ -20,8 +20,11 @@ use std::collections::HashMap;
 use utils::path;
 use time::Duration;
 use time::Tm;
+use runner::env::EnvHelper;
+use manifest::PupManifestStep;
 
 /// An action that involves executing an external command
+#[derive(Clone)]
 pub struct PupExternalAction {
     /// The task to use
     pub task: PupTask,
@@ -35,11 +38,12 @@ pub struct PupExternalAction {
     /// The result bucker for the external runner
     pub result: PupWorkerResult,
 
-    /// The environment to use for this runner,
+    /// The env to use for this specific instance
     pub env: HashMap<String, String>,
 }
 
 /// A task to be execute by the runner
+#[derive(Clone)]
 pub struct PupAction {
     /// Did this complete?
     pub completed: bool,
@@ -57,6 +61,7 @@ pub struct PupAction {
 /// Options to use when 
 #[derive(Clone)]
 pub struct PupActionOptions {
+    /// Is this a dry run? If so, don't actually execute the task.
     /// Is this a dry run? If so, don't actually execute the task.
     pub dry_run: bool,
 
@@ -76,12 +81,12 @@ impl PupAction {
     }
 
     /// Attempt to load the task and all children from the given context
-    pub fn load(&mut self, context: &PupContext, name: &str) -> Result<(), PupError> {
+    pub fn load(&mut self, context: &PupContext, name: &str, parent_env: &HashMap<String, String>) -> Result<(), PupError> {
         // TODO: Recursive runaway check here
-        // Load self
+
+        // Load task and version
         let mut logger = get_logger();
         logger.log(Level::Debug, format!("Loading task: {}", name));
-
         let maybe_task = context.load_task(name);
         if maybe_task.is_err() {
             logger.log(Level::Debug, format!("Failed to load task: {}: {}", name, maybe_task.as_ref().err().unwrap().description()));
@@ -89,6 +94,7 @@ impl PupAction {
         }
         let (task, version) = maybe_task.unwrap();
 
+        // Load the worker for the task
         let maybe_worker = context.load_worker(&task.manifest.action);
         if maybe_worker.is_err() {
             logger.log(Level::Debug, format!("Failed to load worker: {}: {}", name, maybe_worker.as_ref().err().unwrap().description()));
@@ -96,17 +102,27 @@ impl PupAction {
         }
         let worker = maybe_worker.unwrap();
 
-        // Combine envs
-        let mut combined_env = worker.env.clone();
-        for key in version.env.keys() {
-            combined_env.insert(key.to_string(), version.env[key].to_string());
-        }
-
         // Load children
-        for child_ident in &version.steps {
-            logger.log(Level::Debug, format!("Loading child task: {}", child_ident));
+        let env_helper = EnvHelper::new();
+        for step in version.steps.iter() {
+
+            // Generate a combined env for this child
+            let env = match env_helper.extend_with_parent_env(&step.environment, parent_env) {
+                Ok(e) => e,
+                Err(err) => {
+                    logger.log(Level::Debug, format!("Failed to load task: {}: {}", name, err.description()));
+                    return Err(err);
+                }
+            };
+
+            if self.should_skip_task(&env_helper, step, &env, name, &mut logger)? {
+                continue;
+            }
+
+            // Load the child with the rendered env group
+            logger.log(Level::Debug, format!("Loading child task: {}", step.step));
             let mut child_action = PupAction::new();
-            child_action.load(context, &child_ident)?;
+            child_action.load(context, &step.step, &env)?;
             self.children.push(child_action);
         }
 
@@ -116,10 +132,53 @@ impl PupAction {
             task,
             version,
             result: PupWorkerResult {},
-            env: combined_env,
+            env: parent_env.clone(),
         });
 
         Ok(())
+    }
+
+    /// 'skip' and 'if' are two special markers on steps to decide if they should execute in a plan.
+    fn should_skip_task(&self, env_helper: &EnvHelper, step: &PupManifestStep, env: &HashMap<String, String>, name: &str, logger: &mut Logger) -> Result<bool, PupError> {
+        // Check if this child has a skip marker?
+        if step.skip != "" {
+            let skip_test = match env_helper.process_env_variable(&step.skip, &env) {
+                Ok(v) => v,
+                Err(err) => {
+                    logger.log(Level::Debug, format!("Failed to load task: {}: {}", name, err.description()));
+                    return Err(err);
+                }
+            };
+            if skip_test.len() > 0 && skip_test != "0" && skip_test.to_lowercase() != "false" {
+                logger.log(Level::Debug, format!("Skipped child task: {}: skip token was: {}", step.step, skip_test));
+                return Ok(true);
+            } else {
+                if skip_test.len() > 0 {
+                    logger.log(Level::Debug, format!("Using optional child task: {}: skip token was: {}", step.step, skip_test));
+                }
+            }
+        }
+
+        // Check if this child has an if marker?
+        if step.if_marker != "" {
+            let skip_test = match env_helper.process_env_variable(&step.if_marker, &env) {
+                Ok(v) => v,
+                Err(err) => {
+                    logger.log(Level::Debug, format!("Failed to load task: {}: {}", name, err.description()));
+                    return Err(err);
+                }
+            };
+            if skip_test.len() == 0 || skip_test == "0" || skip_test.to_lowercase() == "false" {
+                logger.log(Level::Debug, format!("Skipped child task: {}: if token was: {}", step.step, skip_test));
+                return Ok(true);
+            } else {
+                if skip_test.len() > 0 {
+                    logger.log(Level::Debug, format!("Using optional child task: {}: if token was: {}", step.step, skip_test));
+                }
+            }
+        }
+
+        return Ok(false);
     }
 
     /// Run this task and all child tasks
@@ -190,12 +249,14 @@ impl PupAction {
                 // Invoke worker stream
                 if options.dry_run {
                     self.info(logger, &format!("Exec: (skipped) {} {}", path::display(&ext.worker.path), options.args.join(" ")), depth + 1);
-                    for key in ext.env.keys() {
+                    let mut keys: Vec<String> = ext.env.keys().map(|i| i.to_string()).collect();
+                    keys.sort();
+                    for key in keys.iter() {
                         self.info(logger, &format!("Env: {}: {}", key, ext.env[key]), depth + 2);
                     }
                 } else {
                     self.info(logger, &format!("Exec: {} {}", path::display(&ext.worker.path), options.args.join(" ")), depth + 1);
-                    match try_run_task(&ext.worker.path, options, &ext.worker.env).join() {
+                    match try_run_task(&ext.worker.path, options, &ext.env).join() {
                         Ok(result) => {
                             match result {
                                 Ok(exec_result) => {
@@ -252,7 +313,7 @@ impl PupAction {
             }
             Err(err) => {
                 Err(PupError::with_error(
-                    PupErrorType::MissingVersionFolder,
+                    PupErrorType::MissingWorkFolder,
                     &format!("Failed to set current dir to: {:?}", path),
                     err,
                 ))

@@ -5,6 +5,8 @@ use std::fs;
 use logger::get_logger;
 use base_logging::Level;
 use std::error::Error;
+use errors::PupWorkerError;
+use std::fs::File;
 
 /// Treat platforms uniformly regardless of mix and matching formats
 pub fn join<U: AsRef<Path>, V: AsRef<Path>>(a: U, b: V) -> PathBuf {
@@ -30,10 +32,18 @@ pub fn display<P: AsRef<Path>>(path: P) -> String {
             p.display().to_string()
         }
         Err(err) => {
-            let mut logger = get_logger();
             let rtn = path.as_ref().display().to_string();
-            logger.log(Level::Debug, format!("Failed to normalize path: {:?}: {}", rtn, err.description()));
+            match get_logger() {
+                Ok(mut logger) => { logger.log(Level::Debug, format!("Failed to normalize path: {:?}: {}", rtn, err.description())) }
+                Err(_) => {}
+            }
             rtn
         }
     };
+}
+
+// Write a 0-byte output file to the target path
+pub fn blat<P: AsRef<Path>>(path: P) -> Result<(), PupWorkerError> {
+    PupWorkerError::wrap(File::create(path.as_ref()))?;
+    Ok(())
 }
