@@ -42,4 +42,19 @@ tasks:
                     
   - input: output/bar.txt.tmp
     output: output/bar.txt
-    mode: Copy          
+    mode: Copy
+
+  - input: foo.txt
+    output: foo.txt
+    skip: true
+    mode: Copy
+        
+  - input: foo3.txt
+    output: foo2.txt
+    flags: [SkipIfInputMissing]
+    mode: Copy
+    
+  - input: foo.txt
+    output: output/foo2.txt
+    flags: [SkipIfOutputExists]
+    mode: Copy

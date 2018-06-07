@@ -6,7 +6,6 @@ extern crate serde_yaml;
 extern crate handlebars;
 extern crate walkdir;
 
-use pup_worker::errors::{PupError, PupErrorType};
 use pup_worker::utils::path;
 use pup_worker::utils::exec;
 
@@ -14,7 +13,6 @@ use std::path::Path;
 use std::fs::File;
 use std::io::Read;
 use std::path::PathBuf;
-use std::error::Error;
 use std::env;
 use handlebars::Handlebars;
 use std::collections::HashMap;
@@ -22,15 +20,11 @@ use walkdir::WalkDir;
 use std::process;
 
 fn main() {
-    main_();
-}
-
-fn main_() {
     let here = env::current_dir().unwrap();
     trace(&format!("folder: {}", path::display(&here)));
 
     let mut manifest = TaskManifest::try_from(&here);
-    let mut reg = Handlebars::new();
+    let reg = Handlebars::new();
 
     // Copy environment variable for child
     let mut all_vars: HashMap<String, String> = HashMap::new();

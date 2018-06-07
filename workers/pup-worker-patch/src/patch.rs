@@ -6,6 +6,9 @@ use pup_worker::utils::path;
 use pup_worker::utils::env::EnvHelper;
 use pup_worker::logger::Level;
 use std::path::PathBuf;
+use manifest::PatchModeFlag;
+use std::collections::HashMap;
+use std::mem;
 
 
 pub trait Patcher {
@@ -22,10 +25,12 @@ pub fn process_patch_task(task: &mut PatchTask, logger: &mut Logger) -> Result<(
     let path = env.expand_single_value(&task.input, &keys)?;
 
     // Skip this task?
-    let skip = env.expand_single_value(&task.skip, &keys)?;
-    let should_skip = skip.trim().len() > 0 && skip != "0" && skip.to_lowercase() != "false";
+    let mut reason = String::new();
+    let should_skip = check_if_should_skip(&path, &output, task, &keys, &mut env, &mut reason)?;
+
+    // Actually skip if we need to
     if should_skip {
-        logger.log(Level::Info, format!("(mode: {:?}) Skipped patch ({}): {} -> {}", task.mode, skip, &path, &output));
+        logger.log(Level::Info, format!("(mode: {:?}) Skipped patch ({}): {} -> {}", task.mode, reason, &path, &output));
         return Err(PupWorkerError::from(PupWorkerErrorType::SkipTask));
     }
 
@@ -68,4 +73,29 @@ pub fn process_patch_task(task: &mut PatchTask, logger: &mut Logger) -> Result<(
     patcher.patch(full_input_path, full_output_path, task)?;
 
     Ok(())
+}
+
+/// Sometimes we need to skip depending on flags.
+fn check_if_should_skip(input: &str, output: &str, task: &PatchTask, keys: &HashMap<String, String>, env: &mut EnvHelper, reason: &mut String) -> Result<bool, PupWorkerError> {
+    let skip = env.expand_single_value(&task.skip, &keys)?;
+    if skip.trim().len() > 0 && skip != "0" && skip.to_lowercase() != "false" {
+        mem::replace(reason, format!("skip: {:?}", skip));
+        return Ok(true);
+    }
+
+    if task.flags.contains(&PatchModeFlag::SkipIfInputMissing) {
+        if !path::exists(input) {
+            mem::replace(reason, format!("{:?} set", PatchModeFlag::SkipIfInputMissing).to_string());
+            return Ok(true);
+        }
+    }
+
+    if task.flags.contains(&PatchModeFlag::SkipIfOutputExists) {
+        if path::exists(output) {
+            mem::replace(reason, format!("{:?} set", PatchModeFlag::SkipIfOutputExists).to_string());
+            return Ok(true);
+        }
+    }
+
+    return Ok(false);
 }

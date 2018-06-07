@@ -23,6 +23,10 @@ pub struct PatchTask {
     /// The patch mode to apply
     pub mode: PatchMode,
 
+    /// The set of patch mode flags
+    #[serde(default)]
+    pub flags: Vec<PatchModeFlag>,
+
     /// The set of patches to apply
     #[serde(default)]
     pub patch: Vec<PatchTaskItem>,
@@ -47,6 +51,15 @@ pub struct PatchTaskItem {
     /// The value to replace with; apply env content formatting.
     #[serde(default)]
     pub values: Vec<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Copy, Clone, PartialEq)]
+pub enum PatchModeFlag {
+    /// Skip without an error if the input file is missing.
+    SkipIfInputMissing,
+
+    /// Skip without an error if the output file already exists.
+    SkipIfOutputExists,
 }
 
 #[derive(Debug, Serialize, Deserialize, Copy, Clone, PartialEq)]

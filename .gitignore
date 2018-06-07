@@ -2,3 +2,4 @@
 *.sln
 *.sln.*
 target
+bin
