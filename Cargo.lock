@@ -9,6 +9,7 @@ dependencies = [
 [[package]]
 name = "base-logging"
 version = "0.1.0"
+source = "git+https://github.com/shadowmint/rust-base-logging#dc307bf8f0925289399ca09a98a85da16ef8a984"
 dependencies = [
  "log 0.4.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde 1.0.59 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -123,7 +124,7 @@ dependencies = [
 name = "pup-core"
 version = "0.1.0"
 dependencies = [
- "base-logging 0.1.0",
+ "base-logging 0.1.0 (git+https://github.com/shadowmint/rust-base-logging)",
  "dunce 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "handlebars 1.0.0-beta.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "lazy_static 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -137,7 +138,7 @@ dependencies = [
 name = "pup-main"
 version = "0.1.0"
 dependencies = [
- "base-logging 0.1.0",
+ "base-logging 0.1.0 (git+https://github.com/shadowmint/rust-base-logging)",
  "pup-core 0.1.0",
 ]
 
@@ -329,6 +330,7 @@ dependencies = [
 
 [metadata]
 "checksum aho-corasick 0.6.4 (registry+https://github.com/rust-lang/crates.io-index)" = "d6531d44de723825aa81398a6415283229725a00fa30713812ab9323faa82fc4"
+"checksum base-logging 0.1.0 (git+https://github.com/shadowmint/rust-base-logging)" = "<none>"
 "checksum cfg-if 0.1.3 (registry+https://github.com/rust-lang/crates.io-index)" = "405216fd8fe65f718daa7102ea808a946b6ce40c742998fbfd3463645552de18"
 "checksum dtoa 0.4.2 (registry+https://github.com/rust-lang/crates.io-index)" = "09c3753c3db574d215cba4ea76018483895d7bff25a31b49ba45db21c48e50ab"
 "checksum dunce 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)" = "e86b07356baf1cc7058c95807ffba0bebe0c8cadd0df4c40b292c86194eabb37"

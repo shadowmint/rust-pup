@@ -7,4 +7,5 @@ authors = [""]
 path = "../pup-core"
 
 [dependencies.base-logging]
-path = "../base-logging"
+git = "https://github.com/shadowmint/rust-base-logging"
+branch = "master"

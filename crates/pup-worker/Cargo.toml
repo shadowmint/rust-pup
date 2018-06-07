@@ -12,4 +12,5 @@ dunce = "0.1"
 handlebars = "1.0.0-beta.2"
 
 [dependencies.base-logging]
-path = "../base-logging"
+git = "https://github.com/shadowmint/rust-base-logging"
+branch = "master"
