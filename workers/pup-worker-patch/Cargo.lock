@@ -115,6 +115,7 @@ dependencies = [
 [[package]]
 name = "pup-worker"
 version = "0.1.0"
+source = "git+https://github.com/shadowmint/rust-pup-worker#985e833d5f9c3acc9fa7cda565daa599751a8bfd"
 dependencies = [
  "base-logging 0.1.0 (git+https://github.com/shadowmint/rust-base-logging)",
  "dunce 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -132,7 +133,7 @@ dependencies = [
  "base-logging 0.1.0 (git+https://github.com/shadowmint/rust-base-logging)",
  "getopts 0.2.17 (registry+https://github.com/rust-lang/crates.io-index)",
  "handlebars 1.0.0-beta.2 (registry+https://github.com/rust-lang/crates.io-index)",
- "pup-worker 0.1.0",
+ "pup-worker 0.1.0 (git+https://github.com/shadowmint/rust-pup-worker)",
  "regex 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde 1.0.59 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde_derive 1.0.59 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -342,6 +343,7 @@ dependencies = [
 "checksum pest 1.0.6 (registry+https://github.com/rust-lang/crates.io-index)" = "0fce5d8b5cc33983fc74f78ad552b5522ab41442c4ca91606e4236eb4b5ceefc"
 "checksum pest_derive 1.0.7 (registry+https://github.com/rust-lang/crates.io-index)" = "ab94faafeb93f4c5e3ce81ca0e5a779529a602ad5d09ae6d21996bfb8b6a52bf"
 "checksum proc-macro2 0.4.3 (registry+https://github.com/rust-lang/crates.io-index)" = "a45f2f0ae0b5757f6fe9e68745ba25f5246aea3598984ed81d013865873c1f84"
+"checksum pup-worker 0.1.0 (git+https://github.com/shadowmint/rust-pup-worker)" = "<none>"
 "checksum quick-error 1.2.1 (registry+https://github.com/rust-lang/crates.io-index)" = "eda5fe9b71976e62bc81b781206aaa076401769b2143379d3eb2118388babac4"
 "checksum quote 0.3.15 (registry+https://github.com/rust-lang/crates.io-index)" = "7a6e920b65c65f10b2ae65c831a81a073a89edd28c7cce89475bff467ab4167a"
 "checksum quote 0.6.2 (registry+https://github.com/rust-lang/crates.io-index)" = "9e53eeda07ddbd8b057dde66d9beded11d0dfda13f0db0769e6b71d6bcf2074e"

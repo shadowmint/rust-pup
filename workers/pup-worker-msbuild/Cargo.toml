@@ -11,4 +11,6 @@ serde_derive = "1.0"
 walkdir = "2"
 
 [dependencies.pup-worker]
-path = "../../crates/pup-worker"
+git = "https://github.com/shadowmint/rust-pup-worker"
+branch = "master"
+

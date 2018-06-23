@@ -12,7 +12,8 @@ getopts = "0.2.17"
 regex = "1.0"
 
 [dependencies.pup-worker]
-path = "../../crates/pup-worker"
+git = "https://github.com/shadowmint/rust-pup-worker"
+branch = "master"
 
 [dependencies.base-logging]
 git = "https://github.com/shadowmint/rust-base-logging"
