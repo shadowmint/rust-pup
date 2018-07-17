@@ -23,6 +23,11 @@ pub struct TaskItem {
 
     /// The argument string template (handlebars)
     pub args: Vec<String>,
+
+    /// Save the command output to a file
+    /// Doesn't work with 'dont_wait'
+    #[serde(default)]
+    pub output: String,
     
     /// Disconnect the process and return zero if it spawns without waiting
     #[serde(default)]

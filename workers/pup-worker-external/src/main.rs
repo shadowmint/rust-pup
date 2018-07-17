@@ -16,6 +16,7 @@ use pup_worker::utils::path;
 use pup_worker::utils::exec;
 use pup_worker::logger::get_logger;
 use base_logging::{Logger, Level};
+use std::ops::DerefMut;
 
 use std::path::PathBuf;
 use std::env;
@@ -23,6 +24,10 @@ use handlebars::Handlebars;
 use std::collections::HashMap;
 use std::process;
 use pup_worker::errors::PupWorkerError;
+use std::sync::Arc;
+use std::sync::Mutex;
+use std::fs::OpenOptions;
+use std::io::Write;
 
 fn main() -> Result<(), PupWorkerError> {
     return ExternalTask::new()?.execute();
@@ -70,6 +75,10 @@ impl ExternalTask {
             let rendered_exec_path = reg.render_template(&task.task, &all_vars).unwrap();
             let full_path = self.find_binary_from_task(&rendered_exec_path);
 
+            // Find output path
+            let rendered_output_path = reg.render_template(&task.output, &all_vars).unwrap();
+            let full_output_path = PathBuf::from(&rendered_output_path);
+
             // Render arguments
             let raw = task.args.clone();
             for i in 0..raw.len() {
@@ -95,6 +104,23 @@ impl ExternalTask {
                     args: task.args.clone(),
                     env: all_vars.clone(),
                     capture: false,
+                }).unwrap()
+            } else if task.output != "" {
+                self.trace(&format!("output: {}", rendered_output_path));
+                let mut fp = OpenOptions::new().write(true).create(true).open(&full_output_path).unwrap();
+                let stdout_out = Arc::new(Mutex::new(fp));
+                let stderr_out = stdout_out.clone();
+                internal_exec::exec_stream(exec::ExecRequest {
+                    binary_path: full_path,
+                    args: task.args.clone(),
+                    env: all_vars.clone(),
+                    capture: false,
+                }, move |line: &str| {
+                    println!("{}", line);
+                    writeln!(stdout_out.lock().unwrap().deref_mut(), "{}", line).unwrap();
+                }, move |line: &str| {
+                    println!("{}", line);
+                    writeln!(stderr_out.lock().unwrap().deref_mut(), "{}", line).unwrap();
                 }).unwrap()
             } else {
                 exec::exec(exec::ExecRequest {

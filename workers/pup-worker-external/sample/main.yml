@@ -1,4 +1,13 @@
 tasks:
+  - task: svn
+    info: Save output
+    path: C:\Development\Civica.CES
+    output: log.txt
+    args:
+      - log
+      - --xml
+      - -l 1000
+
   - task: dir
     info: whatever 1
     args:
@@ -14,4 +23,4 @@ tasks:
   - task: dir
     info: whatever 3
     args:
-      - "{{FOO}}\{{BAR}}"
+      - "{{FOO}}\\\\{{BAR}}"
