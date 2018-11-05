@@ -2,7 +2,7 @@
 mkdir -p bin
 
 # Build self
-cargo build --release
+cargo build --release --frozen
 if [ -e target/release/pup ]; then
   cp target/release/pup bin
 fi
@@ -15,7 +15,7 @@ HERE=`pwd`
 for d in *; do
   echo "Build: $d"
   cd $d
-  cargo build --release
+  cargo build --release --frozen
   if [ -e target/release/$d.exe ]; then
     cp target/release/$d.exe $HERE/../bin
   fi

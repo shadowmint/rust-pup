@@ -1,0 +1,11 @@
+[package]
+name = "base-logging"
+version = "0.1.0"
+authors = ["Douglas Linder <douglas.linder@gmail.com>"]
+
+[dependencies]
+log = "0.4.1"
+time = "0.1.39"
+serde_derive = "*"
+serde = "*"
+serde_json = "*"

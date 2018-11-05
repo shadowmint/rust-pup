@@ -1,0 +1,2 @@
+[source.vendored-sources]
+directory = "/Users/doug/dev/now/rust-pup/workers/pup-worker-tasks/vendor"
