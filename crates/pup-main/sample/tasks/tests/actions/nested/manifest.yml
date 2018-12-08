@@ -1,0 +1,10 @@
+action: pup-powershell
+versions:
+  - version: 0.0.1
+    steps:
+      - step: tests.common.prepFolder
+        environment:
+          PREP_FOLDER_PATH: "{{foo}}/{{bar}}/nested"
+          PREP_FOLDER_RULE: clean
+      - step: tests.actions.nested.nestedSub
+      - step: tests.actions.nested.nestedStep2

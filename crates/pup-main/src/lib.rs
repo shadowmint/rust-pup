@@ -6,8 +6,8 @@ mod infrastructure;
 
 use pup_core::{PupError, PupErrorType};
 use std::collections::HashMap;
-use tasks::get_task_runner;
-use pup_core::logger::set_logger_level;
+use crate::tasks::get_task_runner;
+use crate::pup_core::logger::set_logger_level;
 use base_logging::Level;
 
 #[derive(Debug, PartialEq, Clone, Copy, Eq, Hash)]
@@ -107,6 +107,7 @@ mod tests {
     #[test]
     fn test_run_task()
     {
+        println!("{:?}", test_context_process_path().to_str());
         set_logger_level(Level::Debug);
         let mut args = HashMap::new();
         args.insert(PupArg::ProcessManifestPath, String::from(test_context_process_path().to_str().unwrap()));

@@ -2,10 +2,11 @@
 name = "pup-main"
 version = "0.1.0"
 authors = [""]
+edition = "2018"
 
 [dependencies.pup-core]
 path = "../pup-core"
 
 [dependencies.base-logging]
 git = "https://github.com/shadowmint/rust-base-logging"
-branch = "master"
+rev = "4390fbd2d73b65179ddea2aff6b50883df739a38"

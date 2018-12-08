@@ -1,0 +1,7 @@
+action: pup-tasks
+versions:
+  -
+    version: 1.0.0
+    steps:
+      - step: tests.actions.setVersion#0.0.1
+      - step: tests.actions.missing

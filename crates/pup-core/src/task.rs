@@ -1,7 +1,7 @@
-use ::context::PupContext;
-use ::manifest::PupManifest;
-use ::errors::PupError;
-use ::utils::path::join;
+use crate::context::PupContext;
+use crate::manifest::PupManifest;
+use crate::errors::PupError;
+use crate::utils::path::join;
 use std::path::Path;
 use std::path::PathBuf;
 
@@ -41,11 +41,11 @@ impl PupTask {
 #[cfg(test)]
 mod tests {
     use super::PupTask;
-    use ::testing::test_fixture;
+    use crate::testing::test_fixture;
 
     #[test]
     fn load_simple_task() {
-        let process = test_fixture();
+        let process = test_fixture();/*k*/
         let task = PupTask::new(process.context.clone(),
                                 "tests.actions.setVersion",
                                 "tests/actions/setVersion").unwrap();

@@ -1,8 +1,8 @@
 use std::error::Error;
 use std::fmt;
 use std::io;
-use ::serde_yaml;
-use ::handlebars;
+use crate::serde_yaml;
+use crate::handlebars;
 
 #[derive(Debug, Copy, Clone)]
 pub enum PupErrorType {

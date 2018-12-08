@@ -1,14 +1,14 @@
 use std::path::{Path, PathBuf};
-use ::task::PupTask;
-use ::errors::PupError;
-use ::worker::PupWorker;
-use errors::PupErrorType;
-use manifest::PupManifestVersion;
-use utils::path::join;
-use utils::path::exists;
+use crate::task::PupTask;
+use crate::errors::PupError;
+use crate::worker::PupWorker;
+use crate::errors::PupErrorType;
+use crate::manifest::PupManifestVersion;
+use crate::utils::path::join;
+use crate::utils::path::exists;
 use std::collections::HashMap;
-use utils::path;
-use logger::get_logger;
+use crate::utils::path;
+use crate::logger::get_logger;
 use base_logging::Level;
 use std::fs::canonicalize;
 
@@ -120,7 +120,7 @@ impl PupContext {
 
 #[cfg(test)]
 mod tests {
-    use ::testing::test_fixture;
+    use crate::testing::test_fixture;
 
     #[test]
     fn load_simple_task() {

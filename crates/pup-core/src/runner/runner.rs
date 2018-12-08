@@ -1,10 +1,10 @@
 use std::fmt;
-use ::context::PupContext;
-use ::errors::{PupError, PupErrorType};
-use ::runner::PupAction;
-use utils::path;
-use logger::get_logger;
-use runner::action::PupActionOptions;
+use crate::context::PupContext;
+use crate::errors::{PupError, PupErrorType};
+use crate::runner::PupAction;
+use crate::utils::path;
+use crate::logger::get_logger;
+use crate::runner::action::PupActionOptions;
 
 /// A set of tasks to be run
 #[derive(Clone)]
@@ -91,8 +91,8 @@ fn debug_print(f: &mut fmt::Formatter, action: &PupAction, offset: usize, is_las
 #[cfg(test)]
 mod tests {
     use super::PupRunner;
-    use ::testing::test_fixture;
-    use runner::action::PupActionOptions;
+    use crate::testing::test_fixture;
+    use crate::PupActionOptions;
 
     #[test]
     fn load_runner_from_working_task() {

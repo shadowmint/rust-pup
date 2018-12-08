@@ -1,7 +1,7 @@
 use std::collections::HashMap;
-use PupError;
 use handlebars::Handlebars;
 use std::env;
+use crate::PupError;
 
 /// Renderer to render env variables before passing to workers.
 pub struct EnvHelper {

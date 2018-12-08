@@ -1,5 +1,5 @@
 use pup_worker::errors::PupWorkerError;
-use ::base_logging::Logger;
+use crate::base_logging::Logger;
 use manifest::Manifest;
 use pup_worker::logger::Level;
 

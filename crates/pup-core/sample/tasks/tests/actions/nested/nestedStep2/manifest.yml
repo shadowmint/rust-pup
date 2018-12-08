@@ -1,0 +1,3 @@
+action: pup-powershell
+versions:
+  - version: 0.0.1      

@@ -1,19 +1,19 @@
-use ::errors::{PupError, PupErrorType};
-use ::utils::path::join;
+use crate::errors::{PupError, PupErrorType};
+use crate::utils::path::join;
 
-use ::serde_yaml;
+use serde_yaml;
 
 use std::path::Path;
 use std::fs::File;
 use std::io::Read;
 use std::path::PathBuf;
 use std::error::Error;
-use context::PupContext;
+use crate::context::PupContext;
 use std::collections::HashMap;
-use task::PupTask;
-use manifest::PupManifestVersion;
-use runner::PupRunner;
-use runner::env::EnvHelper;
+use crate::task::PupTask;
+use crate::manifest::PupManifestVersion;
+use crate::runner::PupRunner;
+use crate::runner::env::EnvHelper;
 
 #[derive(Debug)]
 pub struct PupProcess {
@@ -129,8 +129,8 @@ impl PupProcess {
 #[cfg(test)]
 mod tests {
     use super::PupProcess;
-    use ::testing::test_context_process_path;
-    use testing::test_fixture;
+    use crate::testing::test_context_process_path;
+    use crate::testing::test_fixture;
 
     #[test]
     fn test_load_from_folder() {

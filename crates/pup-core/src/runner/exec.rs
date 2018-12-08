@@ -1,9 +1,9 @@
 use std::process::{Command, Stdio};
-use ::errors::{PupError, PupErrorType};
+use crate::errors::{PupError, PupErrorType};
 use std::path::PathBuf;
 use std::collections::HashMap;
 use std::error::Error;
-use utils::path;
+use crate::utils::path;
 
 pub struct ExecRequest {
     /// The set of environment variables to add

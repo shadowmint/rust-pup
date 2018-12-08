@@ -1,0 +1,3 @@
+action: pup-worker-external
+versions:
+  - version: 0.0.1

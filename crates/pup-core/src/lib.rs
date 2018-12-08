@@ -22,10 +22,10 @@ pub mod utils;
 pub mod logger;
 pub mod testing;
 
-pub use context::PupContext;
-pub use runner::PupActionOptions;
-pub use errors::{PupError, PupErrorType};
-pub use process::PupProcess;
+pub use crate::context::PupContext;
+pub use crate::runner::PupActionOptions;
+pub use crate::errors::{PupError, PupErrorType};
+pub use crate::process::PupProcess;
 
 #[cfg(test)]
 mod tests {

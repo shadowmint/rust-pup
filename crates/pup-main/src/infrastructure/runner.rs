@@ -1,6 +1,6 @@
-use ::pup_core::PupError;
-use ::PupArg;
-use ::base_logging::Logger;
+use crate::pup_core::PupError;
+use crate::PupArg;
+use crate::base_logging::Logger;
 use std::collections::HashMap;
 
 pub trait PupTaskRunner {

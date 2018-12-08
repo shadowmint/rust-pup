@@ -1,0 +1,7 @@
+action: pup-powershell
+versions:
+  -
+    version: 1.0.0
+    steps:
+      - step: tests.actions.prepareFolder.tasks.deleteOldFiles
+      - step: tests.actions.prepareFolder.tasks.updateFromGit

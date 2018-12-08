@@ -1,27 +1,27 @@
-use ::context::PupContext;
-use ::errors::{PupError, PupErrorType};
-use ::task::PupTask;
-use ::manifest::PupManifestVersion;
-use ::worker::{PupWorker, PupWorkerResult};
-use ::base_logging::Level;
-use ::logger::get_logger;
-use ::dunce;
-use ::time;
+use crate::context::PupContext;
+use crate::errors::{PupError, PupErrorType};
+use crate::task::PupTask;
+use crate::manifest::PupManifestVersion;
+use crate::worker::{PupWorker, PupWorkerResult};
+use crate::base_logging::Level;
+use crate::logger::get_logger;
+use crate::dunce;
+use crate::time;
 use base_logging::Logger;
 use std::env;
 use std::path::Path;
 use std::thread::{spawn, JoinHandle};
 use std::error::Error;
-use runner::ExecRequest;
-use runner::exec::exec;
+use crate::runner::ExecRequest;
+use crate::runner::exec::exec;
 use std::path::PathBuf;
-use runner::ExecResult;
+use crate::runner::ExecResult;
 use std::collections::HashMap;
-use utils::path;
+use crate::utils::path;
 use time::Duration;
 use time::Tm;
-use runner::env::EnvHelper;
-use manifest::PupManifestStep;
+use crate::runner::env::EnvHelper;
+use crate::manifest::PupManifestStep;
 
 /// An action that involves executing an external command
 #[derive(Clone)]
