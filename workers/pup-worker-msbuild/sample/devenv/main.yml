@@ -1,5 +1,6 @@
 msbuild:
   info: whatever 1
   path: .
+  buildAgent: devenv
   args:
   - "-h"

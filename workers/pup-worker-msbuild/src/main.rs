@@ -1,23 +1,23 @@
 #[macro_use]
 extern crate serde_derive;
 
+extern crate handlebars;
 extern crate pup_worker;
 extern crate serde_yaml;
-extern crate handlebars;
 extern crate walkdir;
 
-use pup_worker::utils::path;
 use pup_worker::utils::exec;
+use pup_worker::utils::path;
 
-use std::path::Path;
-use std::fs::File;
-use std::io::Read;
-use std::path::PathBuf;
-use std::env;
 use handlebars::Handlebars;
 use std::collections::HashMap;
-use walkdir::WalkDir;
+use std::env;
+use std::fs::File;
+use std::io::Read;
+use std::path::Path;
+use std::path::PathBuf;
 use std::process;
+use walkdir::WalkDir;
 
 fn main() {
     let here = env::current_dir().unwrap();
@@ -44,7 +44,7 @@ fn main() {
     }
 
     // Find binary to run
-    let full_path = find_msbuild();
+    let full_path = find_agent(&task.build_agent, &task.build_agent_version);
 
     // Render arguments
     let raw = task.args.clone();
@@ -63,13 +63,18 @@ fn main() {
     }
 
     // Execute task
-    trace(&format!("exec: {} {}", full_path.to_str().unwrap(), task.args.join(" ")));
+    trace(&format!(
+        "exec: {} {}",
+        full_path.to_str().unwrap(),
+        task.args.join(" ")
+    ));
     let output = exec::exec(exec::ExecRequest {
         binary_path: full_path,
         args: task.args.clone(),
         env: all_vars.clone(),
         capture: false,
-    }).unwrap();
+    })
+    .unwrap();
 
     // Abort run if it failed
     if output.return_code != 0 {
@@ -82,11 +87,14 @@ fn trace(message: &str) {
     println!("pup-worker-external: {}", message);
 }
 
-fn find_msbuild() -> PathBuf {
+fn find_agent(agent: &str, agent_version: &str) -> PathBuf {
     // Find home folder
-    let home_dir = env::home_dir().unwrap();
+    let home_dir = dirs::home_dir().unwrap();
     let vswhere_dir = path::join(home_dir, ".vswhere");
-    trace(&format!("Looking for vswhere in: {}", &vswhere_dir.to_str().unwrap()));
+    trace(&format!(
+        "Looking for vswhere in: {}",
+        &vswhere_dir.to_str().unwrap()
+    ));
 
     // Already installed?
     if !path::exists(&vswhere_dir) {
@@ -94,16 +102,23 @@ fn find_msbuild() -> PathBuf {
         trace("exec: nuget install vswhere -o ~/.vswhere");
         exec::exec(exec::ExecRequest {
             binary_path: PathBuf::from("nuget"),
-            args: vec!("install", "vswhere", "-o", &vswhere_dir.to_str().unwrap()).into_iter().map(|i| i.to_string()).collect(),
+            args: vec!["install", "vswhere", "-o", &vswhere_dir.to_str().unwrap()]
+                .into_iter()
+                .map(|i| i.to_string())
+                .collect(),
             env: HashMap::new(),
             capture: false,
-        }).unwrap();
+        })
+        .unwrap();
     }
 
     // Get full path to vswhere
     let mut vswhere: Option<PathBuf> = None;
     for entry in WalkDir::new(vswhere_dir).into_iter().filter_map(|e| e.ok()) {
-        if entry.path().is_file() && (entry.path().file_name().unwrap() == "vswhere" || entry.path().file_name().unwrap() == "vswhere.exe") {
+        if entry.path().is_file()
+            && (entry.path().file_name().unwrap() == "vswhere"
+                || entry.path().file_name().unwrap() == "vswhere.exe")
+        {
             trace(&format!("Found: {}", entry.path().display()));
             vswhere = Some(PathBuf::from(entry.path()));
             break;
@@ -114,31 +129,81 @@ fn find_msbuild() -> PathBuf {
         process::exit(1);
     }
 
-    // Run vswhere to find msbuild
-    let found = exec::exec(exec::ExecRequest {
-        binary_path: vswhere.take().unwrap(),
-        args: vec!("-latest", "-products", "*", "-requires", "Microsoft.Component.MSBuild", "-property", "installationPath").into_iter().map(|i| i.to_string()).collect(),
-        env: HashMap::new(),
-        capture: true,
-    }).unwrap();
-    let cleaned = found.stdout.unwrap().trim().to_string();
-    trace(&format!("vswhere returned: {}", cleaned));
+    // Setup query args
+    let mut version = if agent_version == "latest" {
+        vec!["-latest"]
+    } else {
+        vec!["-version", agent_version]
+    };
 
-    trace("Using explicit postfix, see: https://github.com/Microsoft/vswhere/wiki/Find-MSBuild");
-    let fullpath = path::join(cleaned, "MSBuild\\15.0\\Bin\\MSBuild.exe");
+    // Determine mode
+    let agent_path = if agent == "msbuild" {
+        // vswhere args
+        version.append(&mut vec![
+            "-requires",
+            "Microsoft.Component.MSBuild",
+            "-find",
+            "MSBuild\\**\\Bin\\MSBuild.exe",
+        ]);
+        let args: Vec<String> = version.into_iter().map(|i| i.to_string()).collect();
 
-    if !path::exists(&fullpath) {
-        trace("vswhere didn't return a valid path. Can't find msbuild.");
+        // Run vswhere to find msbuild
+        trace(&format!("vswhere {}", args.join(" ")));
+        let found = exec::exec(exec::ExecRequest {
+            binary_path: vswhere.take().unwrap(),
+            args,
+            env: HashMap::new(),
+            capture: true,
+        })
+        .unwrap();
+
+        // Take first result
+        let cleaned = found.stdout.unwrap().to_string();
+        let mut lines = cleaned.lines().into_iter().map(|i| i.trim().to_string());
+        let fullpath = lines.next().unwrap_or("NOT_FOUND".to_string());
+        trace(&format!("vswhere returned: {}", cleaned));
+        fullpath
+    } else if agent == "devenv" {
+        // vswhere args
+        version.append(&mut vec!["-find", "**\\devenv.exe"]);
+        let args: Vec<String> = version.into_iter().map(|i| i.to_string()).collect();
+
+        // Run vswhere to find msbuild
+        trace(&format!("vswhere {}", args.join(" ")));
+        let found = exec::exec(exec::ExecRequest {
+            binary_path: vswhere.take().unwrap(),
+            args,
+            env: HashMap::new(),
+            capture: true,
+        })
+        .unwrap();
+
+        // Take first result
+        let cleaned = found.stdout.unwrap().to_string();
+        let mut lines = cleaned.lines().into_iter().map(|i| i.trim().to_string());
+        let fullpath = lines.next().unwrap_or("NOT_FOUND".to_string());
+        trace(&format!("vswhere returned: {}", cleaned));
+        fullpath
+    } else {
+        trace(&format!(
+            "Invalid agent: {}. Try 'msbuild' or 'devenv'",
+            agent
+        ));
+        process::exit(1);
+    };
+
+    if !path::exists(&agent_path) {
+        trace("vswhere didn't return a valid path. Can't find agent.");
         process::exit(1);
     }
 
-    trace(&format!("Found msbuild: {}", path::display(&fullpath)));
-    return PathBuf::from(fullpath);
+    trace(&format!("Found msbuild: {}", path::display(&agent_path)));
+    return PathBuf::from(agent_path);
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct TaskManifest {
-    pub msbuild: TaskItem
+    pub msbuild: TaskItem,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -147,12 +212,30 @@ pub struct TaskItem {
     #[serde(default)]
     pub info: String,
 
+    /// Pick a specific build version
+    #[serde(default = "default_agent_version")]
+    #[serde(rename = "buildAgentVersion")]
+    pub build_agent_version: String,
+
+    /// Use devenv instead of msbuild
+    #[serde(default = "default_build_agent")]
+    #[serde(rename = "buildAgent")]
+    pub build_agent: String,
+
     /// The path to execute in.
     #[serde(default)]
     pub path: String,
 
     /// The argument string template (handlebars)
     pub args: Vec<String>,
+}
+
+fn default_build_agent() -> String {
+    format!("msbuild")
+}
+
+fn default_agent_version() -> String {
+    format!("latest")
 }
 
 impl TaskManifest {

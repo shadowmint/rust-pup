@@ -1,4 +1,4 @@
-use crate::dunce;
+use ::dunce;
 use std::path::PathBuf;
 use std::path::Path;
 use std::fs;

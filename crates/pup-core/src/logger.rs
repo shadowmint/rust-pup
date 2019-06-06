@@ -1,10 +1,10 @@
-use base_logging::Logger;
-use base_logging::Level;
-use base_logging::LogFormatter;
-use base_logging::loggers::ConsoleLogger;
+use ::base_logging::Logger;
+use ::base_logging::Level;
+use ::base_logging::LogFormatter;
+use ::base_logging::loggers::ConsoleLogger;
 use std::collections::HashMap;
-use time::Tm;
-use time;
+use ::time::Tm;
+use ::time;
 use std::sync::Mutex;
 
 struct PupFormatter {}

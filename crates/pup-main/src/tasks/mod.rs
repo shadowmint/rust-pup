@@ -2,11 +2,11 @@ mod list_available_tasks;
 mod show_execution_plan;
 mod run_task;
 
-use crate::PupTask;
-use crate::tasks::list_available_tasks::list_available_tasks;
-use crate::infrastructure::runner::PupTaskRunner;
-use crate::tasks::show_execution_plan::show_execution_plan;
-use crate::tasks::run_task::run_task;
+use PupTask;
+use tasks::list_available_tasks::list_available_tasks;
+use infrastructure::runner::PupTaskRunner;
+use tasks::show_execution_plan::show_execution_plan;
+use tasks::run_task::run_task;
 
 pub fn get_task_runner(task: PupTask) -> Option<Box<PupTaskRunner>> {
     if task == PupTask::ListAvailableTasks {

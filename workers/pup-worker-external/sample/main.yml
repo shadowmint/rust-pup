@@ -1,12 +1,18 @@
 tasks:
-  - task: svn
+  - task: ls
     info: Save output
-    path: C:\Development\Civica.CES
+    path: data
     output: log.txt
     args:
-      - log
-      - --xml
-      - -l 1000
+      - "-al"
+
+  - task: ls
+    info: Save output
+    path: data/foo/bar
+    output: log.txt
+    continueOnFailure: true
+    args:
+      - "-al"
 
   - task: dir
     info: whatever 1

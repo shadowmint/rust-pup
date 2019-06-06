@@ -1,7 +1,7 @@
 use std::path::Path;
 use std::fs::File;
 use std::io::Read;
-use crate::serde_yaml;
+use ::serde_yaml;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct TaskManifest {
@@ -28,11 +28,20 @@ pub struct TaskItem {
     /// Doesn't work with 'dont_wait'
     #[serde(default)]
     pub output: String,
-    
+
+    /// Allow failure; eg. if a move / clone / etc fails then allow it to continue
+    #[serde(default = "default_failure_mode")]
+    #[serde(rename = "continueOnFailure")]
+    pub continue_on_failure: bool,
+
     /// Disconnect the process and return zero if it spawns without waiting
     #[serde(default)]
     #[serde(rename = "dontWait")]
     pub dont_wait: bool
+}
+
+fn default_failure_mode() -> bool {
+    false
 }
 
 impl TaskManifest {

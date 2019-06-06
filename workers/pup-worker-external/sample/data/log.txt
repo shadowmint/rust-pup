@@ -1,0 +1,6 @@
+total 7
+drwxr-xr-x 1 linder0d 1049089   0 Jun  6 10:19 .
+drwxr-xr-x 1 linder0d 1049089   0 Jun  6 10:19 ..
+-rw-r--r-- 1 linder0d 1049089   3 Jun  6 10:13 junk.txt
+-rw-r--r-- 1 linder0d 1049089   3 Jun  6 10:13 junk1.txt
+-rw-r--r-- 1 linder0d 1049089 275 Jun  6 12:23 log.txt

@@ -1,8 +1,8 @@
-use crate::utils::path::join;
+use utils::path::join;
 use std::path::PathBuf;
 use std::collections::HashMap;
 use std::env::current_exe;
-use crate::PupProcess;
+use PupProcess;
 
 pub fn test_fixture() -> PupProcess {
     let root = test_context_process_path();
@@ -23,6 +23,6 @@ pub fn test_context_process_path() -> PathBuf {
 pub fn test_context_folder() -> PathBuf {
     let test_exe = PathBuf::from(current_exe().unwrap());
     let test_exe_folder = test_exe.parent().unwrap();
-    let test_data_folder = test_exe_folder.join("..").join("..").join("..").join("sample");
+    let test_data_folder = test_exe_folder.join("..").join("..").join("..").join("..").join("..").join("sample");
     return test_data_folder.canonicalize().unwrap();
 }

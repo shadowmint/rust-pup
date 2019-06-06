@@ -9,6 +9,7 @@ serde = "1.0"
 serde_yaml = "0.7"
 serde_derive = "1.0"
 walkdir = "2"
+dirs = "2.0.1"
 
 [dependencies.pup-worker]
 git = "https://github.com/shadowmint/rust-pup-worker"
