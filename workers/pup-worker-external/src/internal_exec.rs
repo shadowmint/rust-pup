@@ -42,9 +42,9 @@ pub fn exec_stream(request: ExecRequest, on_stdout: impl Fn(&str) + Send + 'stat
         .stderr(Stdio::piped())
         .spawn() {
         Ok(cmd) => {
-            let mut cmd_arc = Arc::new(Mutex::new(cmd));
+            let cmd_arc = Arc::new(Mutex::new(cmd));
 
-            let mut cmd_stdout_arc = cmd_arc.clone();
+            let cmd_stdout_arc = cmd_arc.clone();
 
             let stdout_handle = thread::spawn(move || {
                 let mut stdout_guard = cmd_stdout_arc.lock().unwrap();
@@ -60,7 +60,7 @@ pub fn exec_stream(request: ExecRequest, on_stdout: impl Fn(&str) + Send + 'stat
                 }
             });
 
-            let mut cmd_stderr_arc = cmd_arc.clone();
+            let cmd_stderr_arc = cmd_arc.clone();
             let stderr_handle = thread::spawn(move || {
                 let mut stderr_guard = cmd_stderr_arc.lock().unwrap();
                 let stderr = stderr_guard.stderr.as_mut().unwrap();

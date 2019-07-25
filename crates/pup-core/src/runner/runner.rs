@@ -1,10 +1,10 @@
+use crate::context::PupContext;
+use crate::errors::{PupError, PupErrorType};
+use crate::logger::get_logger;
+use crate::runner::action::PupActionOptions;
+use crate::runner::PupAction;
+use crate::utils::path;
 use std::fmt;
-use ::context::PupContext;
-use ::errors::{PupError, PupErrorType};
-use ::runner::PupAction;
-use utils::path;
-use logger::get_logger;
-use runner::action::PupActionOptions;
 
 /// A set of tasks to be run
 #[derive(Clone)]
@@ -30,7 +30,12 @@ impl PupRunner {
     /// or, to just use whatever the latest version is, foo.bar.foobar
     pub fn add(&mut self, name: &str) -> Result<(), PupError> {
         let mut action = PupAction::new();
-        action.load(&self.context, name, &self.context.env)?;
+        action.load(
+            &self.context,
+            name,
+            &self.context.global_env,
+            &self.context.env,
+        )?;
         self.root.children.push(action);
         return Ok(());
     }
@@ -76,7 +81,12 @@ fn debug_print(f: &mut fmt::Formatter, action: &PupAction, offset: usize, is_las
     let _ = write!(f, " {} #{}", ext.task.name, ext.version.version);
 
     // Action
-    let _ = write!(f, " ({} -> {})", ext.worker.name, path::display(&ext.version.path));
+    let _ = write!(
+        f,
+        " ({} -> {})",
+        ext.worker.name,
+        path::display(&ext.version.path)
+    );
     if !is_last || action.children.len() > 0 {
         let _ = write!(f, "\n");
     }
@@ -91,8 +101,8 @@ fn debug_print(f: &mut fmt::Formatter, action: &PupAction, offset: usize, is_las
 #[cfg(test)]
 mod tests {
     use super::PupRunner;
-    use ::testing::test_fixture;
-    use runner::action::PupActionOptions;
+    use crate::runner::action::PupActionOptions;
+    use crate::testing::test_fixture;
 
     #[test]
     fn load_runner_from_working_task() {
@@ -114,10 +124,15 @@ mod tests {
         let process = test_fixture();
         let mut runner = PupRunner::new(&process.context);
         assert!(runner.add("tests.builds.deployment").is_ok());
-        assert!(runner.run(PupActionOptions {
-            dry_run: true,
-            args: vec!("Hello", "--world", "1").iter().map(|x| String::from(*x)).collect(),
-        }).is_ok());
+        assert!(runner
+            .run(PupActionOptions {
+                dry_run: true,
+                args: vec!("Hello", "--world", "1")
+                    .iter()
+                    .map(|x| String::from(*x))
+                    .collect(),
+            })
+            .is_ok());
     }
 
     #[test]
@@ -125,10 +140,15 @@ mod tests {
         let process = test_fixture();
         let mut runner = PupRunner::new(&process.context);
         assert!(runner.add("tests.builds.deployment").is_ok());
-        assert!(runner.run(PupActionOptions {
-            dry_run: false,
-            args: vec!("config.json").iter().map(|x| String::from(*x)).collect(),
-        }).is_err());
+        assert!(runner
+            .run(PupActionOptions {
+                dry_run: false,
+                args: vec!("config.json")
+                    .iter()
+                    .map(|x| String::from(*x))
+                    .collect(),
+            })
+            .is_err());
     }
 
     #[test]

@@ -1,8 +1,8 @@
+use handlebars;
+use serde_yaml;
 use std::error::Error;
 use std::fmt;
 use std::io;
-use ::serde_yaml;
-use ::handlebars;
 
 #[derive(Debug, Copy, Clone)]
 pub enum PupErrorType {
@@ -11,7 +11,10 @@ pub enum PupErrorType {
     MissingWorker,
     MissingManifest,
     MissingProcessManifest,
-    MissingWorkFolder,
+    MissingActionFolder,
+    MissingTasksFolder,
+    MissingPath,
+    MissingWorkerFolder,
     RunnerAlreadyCompleted,
     WorkerFailed,
     InvalidRequest,
@@ -40,7 +43,11 @@ impl PupError {
         };
     }
 
-    pub fn with_error<E: Error + Send + 'static>(error_type: PupErrorType, error_detail: &str, inner_error: E) -> Self {
+    pub fn with_error<E: Error + Send + 'static>(
+        error_type: PupErrorType,
+        error_detail: &str,
+        inner_error: E,
+    ) -> Self {
         return PupError {
             error_type,
             error_detail: format!("{:?}: {}", error_type, error_detail),

@@ -1,9 +1,9 @@
-use std::process::{Command, Stdio};
-use ::errors::{PupError, PupErrorType};
-use std::path::PathBuf;
+use crate::errors::{PupError, PupErrorType};
+use crate::utils::path;
 use std::collections::HashMap;
 use std::error::Error;
-use utils::path;
+use std::path::PathBuf;
+use std::process::{Command, Stdio};
 
 pub struct ExecRequest {
     /// The set of environment variables to add
@@ -28,18 +28,24 @@ pub fn exec(request: ExecRequest) -> Result<ExecResult, PupError> {
         .stdout(Stdio::inherit())
         .stderr(Stdio::inherit())
         .envs(&request.env)
-        .spawn() {
+        .spawn()
+    {
         Ok(mut cmd) => {
             let return_code = cmd.wait()?;
             return Ok(ExecResult {
-                return_code: return_code.code().unwrap()
+                return_code: return_code.code().unwrap(),
             });
         }
         Err(err) => {
             return Err(PupError::with_error(
                 PupErrorType::FailedToSpawnWorker,
-                &format!("Unable to spawn worker: {}: {}", path::display(&request.binary_path), err.description()),
-                err));
+                &format!(
+                    "Unable to spawn worker: {}: {}",
+                    path::display(&request.binary_path),
+                    err.description()
+                ),
+                err,
+            ));
         }
     };
 }

@@ -1,6 +1,6 @@
-use patch::Patcher;
+use crate::patch::Patcher;
 use std::path::PathBuf;
-use manifest::PatchTask;
+use crate::manifest::PatchTask;
 use pup_worker::errors::{PupWorkerError, PupWorkerErrorType};
 use std::fs::File;
 use pup_worker::logger::get_logger;

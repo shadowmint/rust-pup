@@ -1,7 +1,7 @@
-use ::PupArg;
+use crate::PupArg;
 use ::pup_core::{PupError, PupErrorType};
 use std::collections::HashMap;
-use infrastructure::runner::PupTaskRunner;
+use crate::infrastructure::runner::PupTaskRunner;
 
 pub fn require_key(args: &HashMap<PupArg, String>, required: PupArg) -> Result<(), PupError> {
     if !args.contains_key(&required) {

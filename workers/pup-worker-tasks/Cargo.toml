@@ -2,5 +2,6 @@
 name = "pup-worker-tasks"
 version = "0.1.0"
 authors = [""]
+edition = "2018"
 
 [dependencies]

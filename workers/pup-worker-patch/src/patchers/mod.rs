@@ -1,9 +1,9 @@
 mod regex;
 mod copy;
 
-use manifest::PatchMode;
+use crate::manifest::PatchMode;
 use pup_worker::errors::{PupWorkerError, PupWorkerErrorType};
-use patch::Patcher;
+use crate::patch::Patcher;
 
 use self::regex::RegexPatcher;
 use self::copy::CopyPatcher;

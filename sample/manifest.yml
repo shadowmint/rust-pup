@@ -7,5 +7,6 @@ environment:
   foo: bar
   bar: foobar
   userthing: "{{EXT_USERNAME}} -> {{EXT_PASSWORD}}"
+  internal: "{{MANIFEST_HOME}} -> xxx"
   SKIP_STEP: true
   IF_STEP: false

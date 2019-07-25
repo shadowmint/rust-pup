@@ -1,19 +1,25 @@
-use std::path::{Path, PathBuf};
-use ::task::PupTask;
-use ::errors::PupError;
-use ::worker::PupWorker;
-use errors::PupErrorType;
-use manifest::PupManifestVersion;
-use utils::path::join;
-use utils::path::exists;
-use std::collections::HashMap;
-use utils::path;
-use logger::get_logger;
+use self::global_env::build_global_env;
+use crate::errors::PupError;
+use crate::errors::PupErrorType;
+use crate::logger::get_logger;
+use crate::manifest::PupManifestVersion;
+use crate::task::PupTask;
+use crate::utils::path;
+use crate::utils::path::exists;
+use crate::utils::path::join;
+use crate::worker::PupWorker;
 use base_logging::Level;
+use std::collections::HashMap;
 use std::fs::canonicalize;
+use std::path::{Path, PathBuf};
+
+mod global_env;
 
 #[derive(Clone, Debug)]
 pub struct PupContext {
+    /// The global config that exists as a root for the whole process
+    pub global_env: HashMap<String, String>,
+
     /// The config file passed to each worker.
     pub env: HashMap<String, String>,
 
@@ -27,12 +33,23 @@ pub struct PupContext {
 impl PupContext {
     /// Create a new context with a reference to the tasks
     /// root folder, the workers root folder and the config file.
-    pub fn new(tasks: &Path, workers: &Path) -> PupContext {
-        return PupContext {
+    pub fn new(tasks: &Path, workers: &Path, root: &Path) -> Result<PupContext, PupError> {
+        return Ok(PupContext {
             env: HashMap::new(),
-            tasks: canonicalize(PathBuf::from(tasks)).unwrap(),
-            workers: canonicalize(PathBuf::from(workers)).unwrap(),
-        };
+            global_env: build_global_env(root),
+            tasks: canonicalize(PathBuf::from(tasks)).map_err(|_e| {
+                PupError::with_message(
+                    PupErrorType::MissingTasksFolder,
+                    &format!("missing mandatory folder: {:?}", tasks),
+                )
+            })?,
+            workers: canonicalize(PathBuf::from(workers)).map_err(|_e| {
+                PupError::with_message(
+                    PupErrorType::MissingWorkerFolder,
+                    &format!("missing mandatory folder: {:?}", workers),
+                )
+            })?,
+        });
     }
 
     /// Import an entire environment settings map
@@ -62,11 +79,17 @@ impl PupContext {
         // Check the required version exists
         let version: PupManifestVersion = match version_ident {
             Some(version_id) => {
-                let matched = task.manifest.versions.iter().find(|v| { return v.version == version_id; });
+                let matched = task.manifest.versions.iter().find(|v| {
+                    return v.version == version_id;
+                });
                 if matched.is_none() {
                     return Err(PupError::with_message(
                         PupErrorType::MissingVersion,
-                        &format!("No version matching '{:?}' on {}", version_id, path::display(task.path)),
+                        &format!(
+                            "No version matching '{:?}' on {}",
+                            version_id,
+                            path::display(task.path)
+                        ),
                     ));
                 }
                 matched.unwrap().clone()
@@ -90,7 +113,10 @@ impl PupContext {
         let mut logger = get_logger();
 
         let attempt1 = join(&self.workers, name);
-        logger.log(Level::Debug, format!("Checking for: {}", path::display(&attempt1)));
+        logger.log(
+            Level::Debug,
+            format!("Checking for: {}", path::display(&attempt1)),
+        );
         if exists(&attempt1) {
             logger.log(Level::Debug, format!("Found: {}", path::display(&attempt1)));
             return Ok(PupWorker {
@@ -101,7 +127,10 @@ impl PupContext {
         }
 
         let attempt2 = join(&self.workers, format!("{}.exe", name));
-        logger.log(Level::Debug, format!("Checking for: {}", path::display(&attempt2)));
+        logger.log(
+            Level::Debug,
+            format!("Checking for: {}", path::display(&attempt2)),
+        );
         if exists(&attempt2) {
             logger.log(Level::Debug, format!("Found: {}", path::display(&attempt2)));
             return Ok(PupWorker {
@@ -113,19 +142,26 @@ impl PupContext {
 
         return Err(PupError::with_message(
             PupErrorType::MissingWorker,
-            &format!("Unable to find any worker '{}' in {}", name, path::display(&self.workers)),
+            &format!(
+                "Unable to find any worker '{}' in {}",
+                name,
+                path::display(&self.workers)
+            ),
         ));
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use ::testing::test_fixture;
+    use crate::testing::test_fixture;
 
     #[test]
     fn load_simple_task() {
         let process = test_fixture();
-        let (task, version) = process.context.load_task("tests.actions.setVersion#0.0.2").unwrap();
+        let (task, version) = process
+            .context
+            .load_task("tests.actions.setVersion#0.0.2")
+            .unwrap();
         assert_eq!(task.manifest.versions.len(), 2);
         assert_eq!(version.version, "0.0.2");
     }

@@ -1,28 +1,39 @@
-use std::collections::HashMap;
-use PupError;
+use crate::PupError;
 use handlebars::Handlebars;
+use std::collections::HashMap;
 use std::env;
 
 /// Renderer to render env variables before passing to workers.
 pub struct EnvHelper {
+    global: HashMap<String, String>,
     ambient: Option<HashMap<String, String>>,
-    renderer: Handlebars
+    renderer: Handlebars,
 }
 
 impl EnvHelper {
-    pub fn new() -> EnvHelper {
+    pub fn new(global_env: &HashMap<String, String>) -> EnvHelper {
         return EnvHelper {
+            global: global_env.clone(),
             ambient: None,
             renderer: Handlebars::new(),
         };
     }
 
-    pub fn process_env_variable(&self, source: &str, parent_env: &HashMap<String, String>) -> Result<String, PupError> {
-        return Ok(self.renderer.render_template(source, parent_env)?);
+    pub fn process_env_variable(
+        &self,
+        source: &str,
+        parent_env: &HashMap<String, String>,
+    ) -> Result<String, PupError> {
+        let resolved = self.renderer.render_template(source, parent_env)?;
+        return Ok(resolved);
     }
 
-    pub fn extend_with_parent_env(&self, source: &HashMap<String, String>, parent_env: &HashMap<String, String>) -> Result<HashMap<String, String>, PupError> {
-        // Prepopulate with parent
+    pub fn extend_with_parent_env(
+        &self,
+        source: &HashMap<String, String>,
+        parent_env: &HashMap<String, String>,
+    ) -> Result<HashMap<String, String>, PupError> {
+        // Pre-populate with parent
         let mut rtn = parent_env.clone();
 
         // Render each child key, using the parent array
@@ -34,7 +45,11 @@ impl EnvHelper {
         return Ok(rtn);
     }
 
-    pub fn render_existing_keys_from_parent_scope(&self, source: &HashMap<String, String>, parent_env: &HashMap<String, String>) -> Result<HashMap<String, String>, PupError> {
+    pub fn render_existing_keys_from_parent_scope(
+        &self,
+        source: &HashMap<String, String>,
+        parent_env: &HashMap<String, String>,
+    ) -> Result<HashMap<String, String>, PupError> {
         // Prepopulate with parent
         let mut rtn = source.clone();
 
@@ -48,15 +63,20 @@ impl EnvHelper {
     }
 
     pub fn ambient_state(&mut self) -> &HashMap<String, String> {
-        if self.ambient.is_some() {
-            return &self.ambient.as_ref().unwrap();
-        }
+        match self.ambient {
+            Some(ref s) => s,
+            None => {
+                // Initialize from global variables
+                let mut rtn = self.global.clone();
 
-        let mut rtn: HashMap<String, String> = HashMap::new();
-        for (key, value) in env::vars() {
-            rtn.insert(key, value);
+                // Now populate from the env variables in this scope
+                for (key, value) in env::vars() {
+                    rtn.insert(key, value);
+                }
+
+                self.ambient = Some(rtn);
+                &self.ambient.as_ref().unwrap()
+            }
         }
-        self.ambient = Some(rtn);
-        return &self.ambient.as_ref().unwrap();
     }
 }

@@ -1,27 +1,27 @@
+use crate::context::PupContext;
+use crate::errors::{PupError, PupErrorType};
+use crate::logger::get_logger;
+use crate::manifest::PupManifestStep;
+use crate::manifest::PupManifestVersion;
+use crate::runner::env::EnvHelper;
+use crate::runner::exec::exec;
+use crate::runner::ExecRequest;
+use crate::runner::ExecResult;
+use crate::task::PupTask;
+use crate::utils::path;
+use crate::worker::{PupWorker, PupWorkerResult};
 use base_logging::Level;
 use base_logging::Logger;
-use context::PupContext;
 use dunce;
-use errors::{PupError, PupErrorType};
-use logger::get_logger;
-use manifest::PupManifestStep;
-use manifest::PupManifestVersion;
-use runner::env::EnvHelper;
-use runner::exec::exec;
-use runner::ExecRequest;
-use runner::ExecResult;
 use std::collections::HashMap;
 use std::env;
 use std::error::Error;
 use std::path::Path;
 use std::path::PathBuf;
 use std::thread::{spawn, JoinHandle};
-use task::PupTask;
 use time;
 use time::Duration;
 use time::Tm;
-use utils::path;
-use worker::{PupWorker, PupWorkerResult};
 
 /// An action that involves executing an external command
 #[derive(Clone)]
@@ -84,6 +84,7 @@ impl PupAction {
         &mut self,
         context: &PupContext,
         name: &str,
+        global_env: &HashMap<String, String>,
         parent_env: &HashMap<String, String>,
     ) -> Result<(), PupError> {
         // TODO: Recursive runaway check here
@@ -121,7 +122,7 @@ impl PupAction {
         let worker = maybe_worker.unwrap();
 
         // Load children
-        let env_helper = EnvHelper::new();
+        let env_helper = EnvHelper::new(global_env);
         for step in version.steps.iter() {
             // Generate a combined env for this child
             let env = match env_helper.extend_with_parent_env(&step.environment, parent_env) {
@@ -142,7 +143,7 @@ impl PupAction {
             // Load the child with the rendered env group
             logger.log(Level::Debug, format!("Loading child task: {}", step.step));
             let mut child_action = PupAction::new();
-            child_action.load(context, &step.step, &env)?;
+            child_action.load(context, &step.step, global_env, &env)?;
             self.children.push(child_action);
         }
 
@@ -342,7 +343,9 @@ impl PupAction {
                 );
                 match self.try_run_cwd(&ext.version.path, logger, depth) {
                     Ok(active_path) => {
-                        ext.env.insert("MANIFEST_HOME".to_string(), active_path);
+                        // This is the path the action is executing in, so it can find its
+                        // own resources, eg. powershell files, in the action path.
+                        ext.env.insert("ACTION_HOME".to_string(), active_path);
                         Ok(())
                     }
                     Err(e) => Err(e),
@@ -451,7 +454,7 @@ impl PupAction {
         return match env::set_current_dir(&path_to_use) {
             Ok(_) => Ok(path_to_use.to_str().unwrap_or("NoPath").to_string()),
             Err(err) => Err(PupError::with_error(
-                PupErrorType::MissingWorkFolder,
+                PupErrorType::MissingActionFolder,
                 &format!("Failed to set current dir to: {:?}", path),
                 err,
             )),

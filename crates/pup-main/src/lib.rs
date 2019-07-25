@@ -6,7 +6,7 @@ mod infrastructure;
 
 use pup_core::{PupError, PupErrorType};
 use std::collections::HashMap;
-use tasks::get_task_runner;
+use crate::tasks::get_task_runner;
 use pup_core::logger::set_logger_level;
 use base_logging::Level;
 

@@ -1,19 +1,15 @@
-use ::errors::{PupError, PupErrorType};
-use ::utils::path::join;
-
-use ::serde_yaml;
-
-use std::path::Path;
+use crate::logger::get_logger;
+use crate::utils::path;
+use crate::utils::path::{exists, join};
+use crate::{PupError, PupErrorType};
+use base_logging::Level;
+use serde_yaml;
+use std::collections::HashMap;
+use std::error::Error;
 use std::fs::File;
 use std::io::Read;
+use std::path::Path;
 use std::path::PathBuf;
-use std::error::Error;
-use utils::path::exists;
-use utils::path;
-use std::collections::HashMap;
-use logger::get_logger;
-use ::base_logging::Level;
-
 
 #[derive(Debug, Serialize, Clone, Deserialize)]
 pub struct PupManifest {
@@ -63,7 +59,7 @@ pub struct PupManifestStep {
     /// Allow this step to be skipped if some condition is not met; if this value is NOT any 'truish' string value, skip the step.
     /// Allow handlebar's templates here, eg. if: "{{USE_BUILD_STEP}}"
     /// Inherit the root env configuration as input variables.
-    /// 
+    ///
     #[serde(default)]
     #[serde(rename = "if")]
     pub if_marker: String,
@@ -75,7 +71,11 @@ impl PupManifest {
         return PupManifest::read_manifest(task_folder, &manifest_path).map_err(|err| {
             return PupError::with_error(
                 PupErrorType::MissingManifest,
-                &format!("Unable to read manifest: {}: {:?}", path::display(manifest_path), err.description()),
+                &format!(
+                    "Unable to read manifest: {}: {:?}",
+                    path::display(manifest_path),
+                    err.description()
+                ),
                 err,
             );
         });
@@ -99,7 +99,14 @@ impl PupManifest {
             let mut version_path = join(path, join("versions", &version.version));
             if !exists(&version_path) {
                 // If no versions folder exists, just use the root folder and log a warning.
-                logger.log(Level::Debug, format!("No versions folder for: {}, using root: {}", version.version, path::display(path)));
+                logger.log(
+                    Level::Debug,
+                    format!(
+                        "No versions folder for: {}, using root: {}",
+                        version.version,
+                        path::display(path)
+                    ),
+                );
                 version_path = PathBuf::from(path);
             }
             version.path = version_path;

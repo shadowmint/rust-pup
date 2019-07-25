@@ -1,19 +1,19 @@
-use ::errors::{PupError, PupErrorType};
-use ::utils::path::join;
+use crate::errors::{PupError, PupErrorType};
+use crate::utils::path::{absolute_path, join};
 
-use ::serde_yaml;
+use serde_yaml;
 
-use std::path::Path;
+use crate::context::PupContext;
+use crate::manifest::PupManifestVersion;
+use crate::runner::env::EnvHelper;
+use crate::runner::PupRunner;
+use crate::task::PupTask;
+use std::collections::HashMap;
+use std::error::Error;
 use std::fs::File;
 use std::io::Read;
+use std::path::Path;
 use std::path::PathBuf;
-use std::error::Error;
-use context::PupContext;
-use std::collections::HashMap;
-use task::PupTask;
-use manifest::PupManifestVersion;
-use runner::PupRunner;
-use runner::env::EnvHelper;
 
 #[derive(Debug)]
 pub struct PupProcess {
@@ -23,7 +23,7 @@ pub struct PupProcess {
     /// The internal context instance
     pub context: PupContext,
 
-    /// The internal manifest instance 
+    /// The internal manifest instance
     pub manifest: PupProcessManifest,
 
     /// The ambient external environment overrides, if any
@@ -50,7 +50,11 @@ impl PupProcessManifest {
         return Self::read_manifest(process_manifest_path).map_err(|err| {
             return PupError::with_error(
                 PupErrorType::MissingProcessManifest,
-                &format!("Unable to read process manifest: {:?}: {:?}", process_manifest_path, err.description()),
+                &format!(
+                    "Unable to read process manifest: {:?}: {:?}",
+                    process_manifest_path,
+                    err.description()
+                ),
                 err,
             );
         });
@@ -75,15 +79,20 @@ impl PupProcessManifest {
 
 impl PupProcess {
     /// Create a process from a path and (optionally) a set of external environmental overrides.
-    pub fn load_from<P: AsRef<Path>>(path: P, env: Option<HashMap<String, String>>) -> Result<PupProcess, PupError> {
+    pub fn load_from<P: AsRef<Path>>(
+        path: P,
+        env: Option<HashMap<String, String>>,
+    ) -> Result<PupProcess, PupError> {
         // Load manifest
         let manifest = PupProcessManifest::try_from(path.as_ref())?;
+        let manifest_path: PathBuf = PupProcess::get_manifest_folder(path.as_ref())?;
 
         // Create context
-        let process_path = path.as_ref().parent().unwrap();
         let mut context = PupContext::new(
-            &join(&process_path, &manifest.tasks_path),
-            &join(&process_path, &manifest.workers_path));
+            &join(&manifest_path, &manifest.tasks_path),
+            &join(&manifest_path, &manifest.workers_path),
+            &manifest_path,
+        )?;
 
         // Render any env variables in the manifest
         PupProcess::render_context_env(&manifest, &mut context, env)?;
@@ -96,8 +105,33 @@ impl PupProcess {
         });
     }
 
-    fn render_context_env(manifest: &PupProcessManifest, context: &mut PupContext, overrides: Option<HashMap<String, String>>) -> Result<(), PupError> {
-        let mut env_helper = EnvHelper::new();
+    fn get_manifest_folder(manifest_file_path: &Path) -> Result<PathBuf, PupError> {
+        let unc_path = manifest_file_path
+            .canonicalize()
+            .map_err(|err| {
+                PupError::with_message(
+                    PupErrorType::MissingManifest,
+                    &format!("Unable to resolve manifest folder: {:?}", err),
+                )
+            })?
+            .parent()
+            .map(|i| PathBuf::from(i))
+            .unwrap_or(PathBuf::from("."));
+
+        return absolute_path(unc_path).map_err(|err| {
+            PupError::with_message(
+                PupErrorType::MissingManifest,
+                &format!("Unable to resolve manifest folder: {:?}", err),
+            )
+        });
+    }
+
+    fn render_context_env(
+        manifest: &PupProcessManifest,
+        context: &mut PupContext,
+        overrides: Option<HashMap<String, String>>,
+    ) -> Result<(), PupError> {
+        let mut env_helper = EnvHelper::new(&context.global_env);
         let mut ambient_params = env_helper.ambient_state().clone();
 
         // Blat existing values if any override
@@ -110,7 +144,8 @@ impl PupProcess {
             None => {}
         };
 
-        let env = env_helper.render_existing_keys_from_parent_scope(&manifest.environment, &ambient_params)?;
+        let env = env_helper
+            .render_existing_keys_from_parent_scope(&manifest.environment, &ambient_params)?;
         context.set_root_environment(&env);
         Ok(())
     }
@@ -129,15 +164,35 @@ impl PupProcess {
 #[cfg(test)]
 mod tests {
     use super::PupProcess;
-    use ::testing::test_context_process_path;
-    use testing::test_fixture;
+    use crate::testing::test_context_process_path;
+    use crate::testing::test_fixture;
 
     #[test]
     fn test_load_from_folder() {
         let sample_process = test_context_process_path();
         let process = PupProcess::load_from(sample_process, None).unwrap();
         assert_eq!(process.manifest.environment["foo"], "bar");
-        assert_eq!(process.manifest.environment["userthing"], "{{EXT_USERNAME}} -> {{EXT_PASSWORD}}");
+        assert_eq!(
+            process.manifest.environment["userthing"],
+            "{{EXT_USERNAME}} -> {{EXT_PASSWORD}}"
+        );
+        let _ = process.context;
+    }
+
+    #[test]
+    fn test_auto_paths_are_present() {
+        let sample_process = test_context_process_path();
+        let process = PupProcess::load_from(sample_process, None).unwrap();
+        assert!(process.context.global_env.contains_key("MANIFEST_HOME"));
+        let _ = process.context;
+    }
+
+    #[test]
+    fn test_use_manifest_path() {
+        let sample_process = test_context_process_path();
+        let process = PupProcess::load_from(sample_process, None).unwrap();
+        let expected = format!("{}--foo", &process.context.global_env["MANIFEST_HOME"]);
+        assert_eq!(process.context.env["uses_manifest"], expected);
         let _ = process.context;
     }
 
@@ -147,7 +202,10 @@ mod tests {
 
         // Raw values from manifest
         assert_eq!(process.manifest.environment["foo"], "bar");
-        assert_eq!(process.manifest.environment["userthing"], "{{EXT_USERNAME}} -> {{EXT_PASSWORD}}");
+        assert_eq!(
+            process.manifest.environment["userthing"],
+            "{{EXT_USERNAME}} -> {{EXT_PASSWORD}}"
+        );
 
         // Rendered values
         let runner = process.runner("tests.actions.nested").unwrap();

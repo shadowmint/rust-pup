@@ -10,8 +10,8 @@ mod errors;
 mod internal_exec;
 mod manifest;
 
-use internal_exec::exec_detached;
-use manifest::{TaskItem, TaskManifest};
+use crate::internal_exec::exec_detached;
+use crate::manifest::{TaskItem, TaskManifest};
 
 use base_logging::{Level, Logger};
 use pup_worker::logger::get_logger;
@@ -19,7 +19,7 @@ use pup_worker::utils::exec;
 use pup_worker::utils::path;
 use std::ops::DerefMut;
 
-use errors::WorkerError;
+use crate::errors::WorkerError;
 use handlebars::Handlebars;
 use pup_worker::errors::PupWorkerError;
 use std::collections::HashMap;
@@ -140,7 +140,7 @@ impl ExternalTask {
             })?
         } else if task.output != "" {
             self.trace(&format!("output: {}", rendered_output_path));
-            let mut fp = OpenOptions::new()
+            let fp = OpenOptions::new()
                 .write(true)
                 .create(true)
                 .open(&full_output_path)?;

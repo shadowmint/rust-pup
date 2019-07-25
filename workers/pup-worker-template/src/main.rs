@@ -13,15 +13,15 @@ mod manifest;
 mod actions;
 mod arguments;
 
-use logger::{configure_logging, get_logger};
+use crate::logger::{configure_logging, get_logger};
 use pup_worker::errors::PupWorkerError;
 use pup_worker::logger::Level;
-use manifest::Manifest;
+use crate::manifest::Manifest;
 use std::process;
 use std::error::Error;
-use actions::process_manifest;
-use arguments::process_args;
-use arguments::Arguments;
+use crate::actions::process_manifest;
+use crate::arguments::process_args;
+use crate::arguments::Arguments;
 
 fn main() {
     match process_args() {

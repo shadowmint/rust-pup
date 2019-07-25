@@ -13,15 +13,15 @@ mod manifest;
 mod patchers;
 mod patch;
 
-use logger::{configure_logging, get_logger};
+use crate::logger::{configure_logging, get_logger};
 use pup_worker::errors::PupWorkerError;
 use pup_worker::logger::Level;
-use manifest::PatchManifest;
+use crate::manifest::PatchManifest;
 use std::env;
 use getopts::Options;
 use std::process;
 use std::error::Error;
-use patch::process_patch_task;
+use crate::patch::process_patch_task;
 use pup_worker::errors::PupWorkerErrorType;
 
 fn main() -> Result<(), PupWorkerError> {

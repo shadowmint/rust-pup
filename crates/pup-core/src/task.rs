@@ -1,7 +1,7 @@
-use ::context::PupContext;
-use ::manifest::PupManifest;
-use ::errors::PupError;
-use ::utils::path::join;
+use crate::context::PupContext;
+use crate::errors::PupError;
+use crate::manifest::PupManifest;
+use crate::utils::path::join;
 use std::path::Path;
 use std::path::PathBuf;
 
@@ -19,8 +19,12 @@ pub struct PupTask {
 }
 
 impl PupTask {
-    /// Create a new Task 
-    pub fn new<P: AsRef<Path>>(context: PupContext, name: &str, path: P) -> Result<PupTask, PupError> {
+    /// Create a new Task
+    pub fn new<P: AsRef<Path>>(
+        context: PupContext,
+        name: &str,
+        path: P,
+    ) -> Result<PupTask, PupError> {
         let manifest_path = join(&context.tasks, path);
         match PupManifest::try_from(&manifest_path) {
             Ok(manifest) => {
@@ -41,14 +45,17 @@ impl PupTask {
 #[cfg(test)]
 mod tests {
     use super::PupTask;
-    use ::testing::test_fixture;
+    use crate::testing::test_fixture;
 
     #[test]
     fn load_simple_task() {
         let process = test_fixture();
-        let task = PupTask::new(process.context.clone(),
-                                "tests.actions.setVersion",
-                                "tests/actions/setVersion").unwrap();
+        let task = PupTask::new(
+            process.context.clone(),
+            "tests.actions.setVersion",
+            "tests/actions/setVersion",
+        )
+        .unwrap();
         assert_eq!(task.manifest.versions.len(), 2);
     }
 }

@@ -1,12 +1,12 @@
 use pup_worker::errors::{PupWorkerError, PupWorkerErrorType};
 use base_logging::Logger;
-use manifest::PatchTask;
-use patchers::get_patcher;
+use crate::manifest::PatchTask;
+use crate::patchers::get_patcher;
 use pup_worker::utils::path;
 use pup_worker::utils::env::EnvHelper;
 use pup_worker::logger::Level;
 use std::path::PathBuf;
-use manifest::PatchModeFlag;
+use crate::manifest::PatchModeFlag;
 use std::collections::HashMap;
 use std::mem;
 
