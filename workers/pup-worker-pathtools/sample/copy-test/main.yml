@@ -1,0 +1,26 @@
+config:
+  working_directory: PARAM_PATH
+
+steps:
+  - path: PARAM_TO
+    action: Archive
+
+  - path: PARAM_FROM
+    destination: PARAM_TO
+    action: Copy
+
+  - path: PARAM_FILE_FROM
+    destination: PARAM_FILE_TO
+    action: Copy
+
+  - path: PARAM_FILE_FROM
+    destination: PARAM_FILE_TO_FOLDER
+    action: Copy
+
+  - path: PARAM_FILE_TO
+    destination: PARAM_FILE_TO_FINAL
+    action: Move
+
+  - path: PARAM_FILE_TO_FINAL
+    destination: PARAM_FILE_TO_FINAL_FOLDER
+    action: Move

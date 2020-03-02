@@ -1,0 +1,13 @@
+config:
+  working_directory: PARAM_PATH
+
+steps:
+  - path: PARAM_OUTPUT
+    action: Archive
+
+  - path: PARAM_SETUP
+    action: Require
+
+  - path: PARAM_SETUP
+    destination: PARAM_OUTPUT
+    action: Move

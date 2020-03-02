@@ -1,0 +1,1 @@
+PARAM_PATH=workpath PARAM_SETUP=source_folder PARAM_OUTPUT=target_folder cargo run

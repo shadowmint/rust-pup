@@ -1,4 +1,13 @@
 tasks:
+  - task: npm
+    task_variants:
+      - "C:\\Program Files\\nodejs\\npm.cmd"
+    info: npm variations
+    path: .
+    continueOnFailure: true
+    args:
+      - -h
+
   - task: ls
     info: Save output
     path: data

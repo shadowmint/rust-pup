@@ -21,6 +21,10 @@ pub struct TaskItem {
     /// The binary to execute
     pub task: String,
 
+    /// A set of variants if the primary task can't be found. eg. foo.exe for windows.
+    #[serde(default = "TaskManifest::default_task_variants")]
+    pub task_variants: Vec<String>,
+
     /// The argument string template (handlebars)
     pub args: Vec<String>,
 
@@ -55,5 +59,9 @@ impl TaskManifest {
         let mut raw = String::new();
         fp.read_to_string(&mut raw).unwrap();
         return serde_yaml::from_str(&raw).unwrap();
+    }
+
+    fn default_task_variants() -> Vec<String> {
+        Vec::new()
     }
 }

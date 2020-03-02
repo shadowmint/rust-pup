@@ -21,7 +21,8 @@ use std::ops::DerefMut;
 
 use crate::errors::WorkerError;
 use handlebars::Handlebars;
-use pup_worker::errors::PupWorkerError;
+use pup_worker::errors::{PupWorkerError, PupWorkerErrorType};
+use pup_worker::utils::exec::ExecResult;
 use std::collections::HashMap;
 use std::env;
 use std::fs::OpenOptions;
@@ -32,7 +33,7 @@ use std::sync::Arc;
 use std::sync::Mutex;
 
 fn main() -> Result<(), PupWorkerError> {
-    return ExternalTask::new()?.execute();
+    ExternalTask::new()?.execute()
 }
 
 struct ExternalTask {
@@ -41,9 +42,9 @@ struct ExternalTask {
 
 impl ExternalTask {
     pub fn new() -> Result<ExternalTask, PupWorkerError> {
-        return Ok(ExternalTask {
+        Ok(ExternalTask {
             logger: get_logger()?,
-        });
+        })
     }
 
     fn execute(&mut self) -> Result<(), PupWorkerError> {
@@ -94,15 +95,24 @@ impl ExternalTask {
     ) -> Result<(), WorkerError> {
         // Debug
         println!();
-        if task.info.len() > 0 {
+        if !task.info.is_empty() {
             self.trace(&format!("running: {} ({}/{})", &task.info, offset, count));
         } else {
             self.trace(&format!("running: task ({}/{})", offset, count));
         }
 
-        // Find binary to run
+        // Process task path
+        let mut paths = Vec::new();
         let rendered_exec_path = reg.render_template(&task.task, &all_vars)?;
         let full_path = self.find_binary_from_task(&rendered_exec_path);
+        paths.push(full_path);
+
+        // Process variant paths
+        for variant_path in task.task_variants.iter() {
+            let rendered_exec_path = reg.render_template(variant_path.as_str(), &all_vars)?;
+            let full_path = self.find_binary_from_task(&rendered_exec_path);
+            paths.push(full_path);
+        }
 
         // Find output path
         let rendered_output_path = reg.render_template(&task.output, &all_vars)?;
@@ -126,9 +136,64 @@ impl ExternalTask {
 
         // Execute a detached task; special hack for stupid long lived processes
         // or... execute a normal task and wait for the response.
+
+        let output = self.try_exec_variants(
+            paths,
+            task,
+            all_vars,
+            rendered_output_path,
+            full_output_path,
+        )?;
+
+        // Final check on result status
+        if output.return_code != 0 {
+            return Err(WorkerError::FailureReturnCode);
+        }
+
+        Ok(())
+    }
+
+    fn try_exec_variants(
+        &mut self,
+        paths: Vec<PathBuf>,
+        task: &mut TaskItem,
+        all_vars: &HashMap<String, String>,
+        rendered_output_path: String,
+        full_output_path: PathBuf,
+    ) -> Result<ExecResult, PupWorkerError> {
+        for potential_cmd in paths.iter() {
+            match self.try_exec_variant(
+                potential_cmd.clone(),
+                task,
+                all_vars,
+                rendered_output_path.clone(),
+                full_output_path.clone(),
+            ) {
+                Ok(result) => {
+                    return Ok(result);
+                }
+                Err(_) => {
+                    // Try another variant
+                }
+            }
+        }
+        Err(PupWorkerError::with_message(
+            PupWorkerErrorType::InvalidRequest,
+            "Unable to execute command",
+        ))
+    }
+
+    fn try_exec_variant(
+        &mut self,
+        full_path: PathBuf,
+        task: &mut TaskItem,
+        all_vars: &HashMap<String, String>,
+        rendered_output_path: String,
+        full_output_path: PathBuf,
+    ) -> Result<ExecResult, PupWorkerError> {
         self.trace(&format!(
             "exec: {} {}",
-            rendered_exec_path,
+            full_path.to_string_lossy(),
             task.args.join(" ")
         ));
         let output = if task.dont_wait {
@@ -140,10 +205,20 @@ impl ExternalTask {
             })?
         } else if task.output != "" {
             self.trace(&format!("output: {}", rendered_output_path));
-            let fp = OpenOptions::new()
+            let fp = match OpenOptions::new()
                 .write(true)
                 .create(true)
-                .open(&full_output_path)?;
+                .open(&full_output_path)
+            {
+                Ok(v) => v,
+                Err(err) => {
+                    return Err(PupWorkerError::with_message(
+                        PupWorkerErrorType::IOError,
+                        &format!("{}", err),
+                    ));
+                }
+            };
+
             let stdout_out = Arc::new(Mutex::new(fp));
             let stderr_out = stdout_out.clone();
             internal_exec::exec_stream(
@@ -170,13 +245,7 @@ impl ExternalTask {
                 capture: false,
             })?
         };
-
-        // Final check on result status
-        if output.return_code != 0 {
-            return Err(WorkerError::FailureReturnCode);
-        }
-
-        Ok(())
+        Ok(output)
     }
 
     fn trace(&mut self, message: &str) {
@@ -185,6 +254,6 @@ impl ExternalTask {
     }
 
     fn find_binary_from_task(&mut self, task: &str) -> PathBuf {
-        return PathBuf::from(task);
+        PathBuf::from(task)
     }
 }
